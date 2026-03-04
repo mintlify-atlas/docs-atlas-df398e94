@@ -1,0 +1,318 @@
+---
+title: "Email Response Simulation"
+description: "Deep persona simulation and skeptical buyer review for cold emails"
+---
+
+## Overview
+
+Deep persona simulation and skeptical buyer review for cold emails. Builds a full prospect "world" from LinkedIn + company data, defines their professional reality (KPIs, pain points, inbox behavior), then runs a skeptical buyer roast — emotional reaction first, business evaluation second. One prospect at a time, Tier 1 only.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Review a cold email draft before sending
+- Validate whether a specific person would reply
+- Get feedback on email copy quality
+- Simulate a prospect's reaction
+- Train your instinct for a new audience before automating
+
+**Trigger phrases:** "review email", "copy feedback", "email feedback", "would they reply", "persona review", "check this email", "review this draft", "roast this email", "skeptical buyer"
+
+## Related Skills
+
+```
+email-generation → email-response-simulation → campaign-sending
+```
+
+<Info>
+Run this for **Tier 1 prospects only** — the ones worth individual attention. For Tier 2, use templates from `email-generation` directly.
+</Info>
+
+## Environment Setup
+
+<Note>
+Provider selection and credentials are handled in Phase 1 of the workflow. If LinkedIn data is not available from the Extruct people table, a deep research provider is needed — the skill will ask which one to use.
+</Note>
+
+## Inputs
+
+<ParamField path="email_text" type="string" required>
+  Draft email text to review (paste or from `email-generation` output)
+</ParamField>
+
+<ParamField path="prospect_name" type="string" required>
+  Full name of the prospect
+</ParamField>
+
+<ParamField path="prospect_company" type="string" required>
+  Company name
+</ParamField>
+
+<ParamField path="prospect_title" type="string" required>
+  Job title
+</ParamField>
+
+<ParamField path="linkedin_url" type="string">
+  LinkedIn profile URL (strongly recommended for quality simulation)
+</ParamField>
+
+<ParamField path="hypothesis" type="string">
+  Hypothesis matched from `list-segmentation` (recommended)
+</ParamField>
+
+<ParamField path="linkedin_data" type="object">
+  LinkedIn data from Extruct people table (optional)
+</ParamField>
+
+## Workflow
+
+### Phase 1: Data Enrichment and World Building
+
+Gather as much public data as possible, then simulate the prospect's full world.
+
+<Steps>
+  <Step title="Scrape Public Data">
+    If LinkedIn data is available from the Extruct people table (`linkedin_data` column), use it directly. Otherwise, run research queries via the chosen deep research provider.
+    
+    <Accordion title="Query 1 — Professional Identity">
+      "Research [Name], [Title] at [Company]. Find their LinkedIn About section, career history, previous companies and roles, education, and any professional accomplishments. Include their full career arc — where they started, how they got to this role. Look at LinkedIn, company bios, conference speaker pages, and press mentions."
+    </Accordion>
+    
+    <Accordion title="Query 2 — Public Voice and Positions">
+      "Has [Name] from [Company] written or said anything publicly? Look for LinkedIn posts, blog posts, podcast appearances, conference talks, interviews, or published articles. What topics do they engage with? What language do they use? Include direct quotes if available."
+    </Accordion>
+    
+    <Accordion title="Query 3 — Company and Role Context">
+      "What is [Company] doing right now? Recent news, strategic initiatives, funding, product launches, or hiring signals from the last 12 months. What challenges would a [Title] at this type of company be dealing with? What does their team likely look like?"
+    </Accordion>
+  </Step>
+  
+  <Step title="Simulate Their World">
+    Using the research, build a vivid simulation of this person's professional reality.
+    
+    **Output includes:**
+    
+    ### Daily Reality
+    - **What their day looks like:** Meetings, priorities, where they spend time
+    - **Tools they live in:** CRM, Slack, email volume, dashboards
+    - **What keeps them up at night:** The 1-2 problems they can't solve yet
+    
+    ### Psychology and Decision-Making
+    - **Decision style:** Data-driven / gut / consensus-seeker / authority-based
+    - **Communication preference:** Terse / detailed / formal / casual / story-driven
+    - **Risk appetite:** Early adopter / wait for proof / only buys market leaders
+    - **Trust signals:** What makes them trust a vendor — referrals, data, case studies, free trial
+    
+    ### Inbox Behavior
+    - **Email volume:** Estimate — 50/day? 200/day?
+    - **Cold email tolerance:** Opens most? Deletes by subject? Has assistant filter?
+    - **Reply-blocking mindset:** What makes them NOT reply even if interested
+    - **What triggers a reply:** Specific enough to feel researched, not so specific it feels creepy
+  </Step>
+</Steps>
+
+### Phase 2: Professional Reality
+
+Define the parameters that determine whether your email hits or misses.
+
+<Accordion title="KPIs and Motivators">
+  - **Measured on:** The 2-3 KPIs their boss actually evaluates them on
+  - **Career motivator:** What they're trying to achieve — promotion, build something, stability
+  - **Internal politics:** Who do they need buy-in from? Budget authority?
+</Accordion>
+
+<Accordion title="Pain Points (ranked by severity)">
+  1. **Most acute pain** — the thing that wastes their time or blocks their goals
+  2. Second pain
+  3. Third pain
+</Accordion>
+
+<Accordion title="Relationship to Your Solution">
+  - **Awareness level:** Never heard of tools like this / aware of category / tried competitors
+  - **Current workaround:** How they solve this problem today without you
+  - **Switching cost:** What would they have to give up or change to use you
+</Accordion>
+
+### Phase 3: Skeptical Buyer Roast
+
+Now put on the prospect's hat and read the email cold. Two distinct passes:
+
+<Steps>
+  <Step title="Pass 1: Emotional Reaction (2 seconds)">
+    This is the gut response — before any rational evaluation. Read the email as if you're this person, scanning your inbox between meetings.
+    
+    **Captures:**
+    - **Subject line gut feel:** What they think in 0.5 seconds
+    - **First sentence gut feel:** Do they keep reading or move on?
+    - **Overall vibe:** Feels like spam / feels like a human / feels like someone who gets my world
+    - **Immediate red flags:** Anything that triggers "delete" instinct
+    
+    <Warning>
+    Most cold emails are killed in 2 seconds. The business case only matters if they survive the gut check.
+    </Warning>
+  </Step>
+  
+  <Step title="Pass 2: Business Evaluation (10 seconds)">
+    If they made it past the emotional filter, they now evaluate the substance. This is the more calculated read.
+    
+    **Evaluates:**
+    - **Does this hit my KPIs?** Yes/no — and which one specifically
+    - **Priority level:** Would I deal with this today, this week, this quarter, or never?
+    - **Bridge quality:** How strong is the connection between my pain and their solution?
+    - **Credibility check:** Do I believe this person/company can deliver?
+    - **Effort-to-value ratio:** Is the CTA worth my time? What am I risking by replying?
+  </Step>
+</Steps>
+
+### Phase 4: Risk Flags and Refinement
+
+Identify specific issues in the copy that reduce reply probability.
+
+**Flag types to check:**
+
+<Accordion title="Common Risk Flags">
+  - **Spam trigger** — Phrasing that sounds like mass email, not personal
+  - **Wrong pain** — Opener references a problem this person doesn't actually have
+  - **Weak bridge** — Gap between their pain and your solution is too big or too vague
+  - **Bad personalization** — Mentions something generic disguised as personal
+  - **CTA mismatch** — Ask is too big (meeting) or too small (nothing) for this prospect
+  - **Tone clash** — Email tone doesn't match how this person communicates
+  - **Credibility gap** — Proof point doesn't resonate with this type of buyer
+  - **Length violation** — Too long for their inbox behavior
+</Accordion>
+
+### Phase 5: Output
+
+Present the full analysis and rewrite.
+
+```markdown
+## Copy Feedback: [Name] at [Company]
+
+### Verdict
+**Would they reply?** [Yes / Maybe / No]
+**Reasoning:** [1-2 sentences — the real reason, not a polite version]
+
+### Emotional Reaction Summary
+[2-3 sentences — what they feel in the first 2 seconds]
+
+### Business Evaluation Summary
+[2-3 sentences — does it hit their KPIs, is the bridge strong]
+
+### Risk Flags
+[Table with flag type, location, severity, issue]
+
+### Ranked Changes
+1. **[Highest impact]**
+   - Current: "[exact text]"
+   - Problem: [why it fails for THIS person]
+   - Rewrite: "[new text]"
+
+2. **[Second]**
+   ...
+
+### Rewritten Email
+[Full email with all changes applied]
+```
+
+### Phase 6: Iterate
+
+After presenting, ask:
+- "Want to adjust any of the changes?"
+- "Want to run another prospect through the same email template?"
+- "Ready to finalize?"
+
+Repeat Phases 3-5 until satisfied.
+
+## Running One by One vs. Template Training
+
+<Accordion title="One by One (Primary Use)">
+  Run this for each Tier 1 prospect individually. The value prop, opener, and CTA should be tailored to their specific role and world.
+</Accordion>
+
+<Accordion title="Template Training (Secondary Use)">
+  Even running 3-5 prospects through this process teaches you patterns about the audience. After a few roasts, you'll notice:
+  - Which pain points consistently hit
+  - Which CTAs work for which seniority
+  - Which proof points resonate with which role type
+  - What inbox behavior looks like for this ICP
+  
+  Use these patterns to improve the base template in `email-generation` for Tier 2 prospects.
+</Accordion>
+
+## Guidelines
+
+<Warning>
+- **Never invent persona details.** If research doesn't find something, say "unknown" and reason from the role/title instead.
+- **Be brutally honest.** If the email will be deleted, say so. Sugarcoating wastes the user's time.
+- **The emotional reaction is primary.** Most cold emails are killed in 2 seconds.
+- **Respect the voice rules.** All rewrites must stay within the voice constraints from `email-generation` / `email-prompt-building`.
+- **One email, one prospect.** Never run in bulk. The whole point is depth.
+- **The bridge is everything.** The gap between "their pain" and "your solution" is where most emails fail. If the bridge is weak, no amount of copywriting fixes it — the hypothesis match might be wrong.
+</Warning>
+
+## Red Flag Checklist
+
+<Accordion title="Spam Signals">
+  - Generic opener that could apply to anyone in their role
+  - "I noticed" + something obvious from the company homepage
+  - Flattery disguised as personalization ("impressive growth")
+  - Subject line with their first name and nothing else
+</Accordion>
+
+<Accordion title="Pain Mismatch">
+  - Opener references a problem this person doesn't have
+  - Pain point is real but not THEIR pain — belongs to a different role
+  - Pain is too high-level (company pain) when they care about team-level pain
+  - Pain is hypothetical — "companies like yours often face..."
+</Accordion>
+
+<Accordion title="Bridge Failures">
+  - Solution description is too abstract — no concrete connection to their workflow
+  - Example query or use case doesn't match their vertical/function
+  - Leap from "here's the pain" to "here's our tool" is too fast
+  - No example of how the tool actually solves the specific pain mentioned
+</Accordion>
+
+<Accordion title="CTA Problems">
+  - Asking for a meeting on a first cold email to a VP+
+  - CTA is generic ("happy to chat?") instead of specific to their work
+  - CTA requires them to do work ("check out our docs")
+  - CTA has no clear value exchange — what do they get for responding?
+</Accordion>
+
+<Accordion title="Credibility Gaps">
+  - Proof point is from a different industry than the prospect's
+  - Case study company is too different in size/stage
+  - Metric cited is impressive but irrelevant to their KPIs
+  - No proof point at all
+</Accordion>
+
+<Accordion title="Tone Mismatches">
+  - Too casual for a C-suite / VP executive
+  - Too formal for an ops manager or practitioner
+  - Uses jargon the prospect wouldn't use
+  - Email reads like a marketer wrote it, prospect is a builder/operator
+</Accordion>
+
+## Example Output
+
+<Accordion title="Sample Verdict">
+  **Would they reply?** Maybe
+  
+  **Reasoning:** The pain point (supplier data decay) is real for their role, and the example query shows you understand their vertical. However, the CTA asks for a meeting on a first touch, which is too big an ask for a VP at a 500-person company. The proof point (FieldNation) is peer-relevant. Change the CTA to a sample search and this becomes a Yes.
+  
+  **Emotional Reaction:**
+  Subject line passes ("HVAC supplier data" is specific). First sentence keeps them reading (mentions their platform's 50K contractors, which shows research). Overall vibe is "human who did homework" not "mass email."
+  
+  **Business Evaluation:**
+  Hits their KPI (data quality for contractor network). Priority is "this quarter" not "today" — not urgent but relevant. Bridge quality is strong (decay rate stat matches their pain). Credibility is medium (proof point helps but company is unknown to them).
+</Accordion>
+
+## Next Steps
+
+After email review completes:
+
+1. Apply changes to the email draft
+2. Update the prompt template if changes are systemic
+3. Run more Tier 1 prospects through the same process
+4. Proceed to `campaign-sending` when satisfied

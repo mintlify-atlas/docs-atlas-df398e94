@@ -1,0 +1,418 @@
+---
+title: Extruct API Integration
+description: Company discovery, search, enrichment, and people finder API reference
+---
+
+Extruct provides APIs for discovering companies through AI-powered web research, enriching company data, and finding decision-makers at target accounts.
+
+## Base Configuration
+
+<ParamField path="Base URL" type="string">
+  ```
+  https://api.extruct.ai/v1
+  ```
+</ParamField>
+
+<ParamField path="Authentication" type="header">
+  ```
+  Authorization: Bearer $EXTRUCT_API_TOKEN
+  Content-Type: application/json
+  ```
+</ParamField>
+
+## Discovery API
+
+Find companies via deep web research with AI evaluation.
+
+### Create Discovery Task
+
+```bash
+POST /v1/discovery_tasks
+```
+
+<ParamField path="query" type="string" required>
+  Natural-language description of target companies
+  
+  **Example:** "B2B SaaS companies in healthcare that raised Series A in the last 18 months"
+</ParamField>
+
+<ParamField path="desired_num_results" type="integer">
+  Number of results to discover (1-250)
+  
+  - API default: 100
+  - Recommended: 50
+</ParamField>
+
+<ParamField path="criteria" type="array">
+  Evaluation criteria for discovered companies (recommended: up to 5)
+  
+  Each criterion grades companies on a 1-5 scale:
+  
+  ```json
+  {
+    "key": "has_api",
+    "name": "API Available",
+    "criterion": "Company offers a public API for data integration"
+  }
+  ```
+  
+  **Rules:**
+  - `key`: alphanumeric + underscore, starts with letter
+  - `name`: 1-100 characters
+  - `criterion`: 10-500 characters
+</ParamField>
+
+<ParamField path="auto_data_sources" type="boolean" default={true}>
+  Let system automatically select data sources
+  
+  If set to `false`, you must provide `data_sources`
+</ParamField>
+
+<ParamField path="data_sources" type="array">
+  Manual data source selection (required if `auto_data_sources` is false)
+  
+  Options: `web_search`, `extruct_db`, `linkedin`, `maps`
+</ParamField>
+
+<ParamField path="table" type="object">
+  Auto-import results to an existing table
+  
+  ```json
+  {
+    "id": "uuid-of-existing-table",
+    "run": true,
+    "auto_import": true
+  }
+  ```
+</ParamField>
+
+#### Response
+
+<ResponseField name="id" type="string">
+  Task UUID for polling and fetching results
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Task status: `created` → `in_progress` → `done` | `failed`
+</ResponseField>
+
+<ResponseField name="num_results_discovered" type="integer">
+  Number of companies discovered
+</ResponseField>
+
+<ResponseField name="num_results_enriched" type="integer">
+  Number of companies enriched with data
+</ResponseField>
+
+<ResponseField name="num_results_evaluated" type="integer">
+  Number of companies evaluated against criteria
+</ResponseField>
+
+<ResponseField name="is_exhausted" type="boolean">
+  Whether search has exhausted available sources
+</ResponseField>
+
+```json
+{
+  "id": "task-uuid",
+  "status": "created",
+  "num_results_discovered": 0,
+  "num_results_enriched": 0,
+  "num_results_evaluated": 0,
+  "num_results": 0,
+  "is_exhausted": false
+}
+```
+
+### Poll Discovery Task
+
+```bash
+GET /v1/discovery_tasks/{task_id}
+```
+
+Returns the same response shape as task creation with updated counts.
+
+**Recommended polling:** Once per minute (60s) until `status` is `done` or `failed`
+
+### Fetch Discovery Results
+
+```bash
+GET /v1/discovery_tasks/{task_id}/results?limit=100&offset=0
+```
+
+<ResponseField name="company_name" type="string">
+  Discovered company name
+</ResponseField>
+
+<ResponseField name="company_website" type="string">
+  Company website domain
+</ResponseField>
+
+<ResponseField name="company_description" type="string">
+  AI-generated company description
+</ResponseField>
+
+<ResponseField name="relevance" type="integer">
+  Relevance score (0-100)
+</ResponseField>
+
+<ResponseField name="founding_year" type="integer">
+  Year company was founded
+</ResponseField>
+
+<ResponseField name="source" type="string">
+  Data source: `web_search`, `extruct_db`, `linkedin`, or `maps`
+</ResponseField>
+
+<ResponseField name="scores" type="object">
+  Evaluation scores for each criterion
+  
+  ```json
+  {
+    "has_api": {
+      "grade": 5,
+      "explanation": "Company offers REST API with comprehensive docs",
+      "sources": ["https://example.com/docs"]
+    }
+  }
+  ```
+</ResponseField>
+
+**Example result:**
+
+```json
+{
+  "company_name": "Matchory",
+  "company_website": "matchory.com",
+  "company_description": "Global supplier discovery platform...",
+  "relevance": 100,
+  "founding_year": 2019,
+  "source": "web_search",
+  "scores": {
+    "has_api": {
+      "grade": 5,
+      "explanation": "Offers public REST API",
+      "sources": ["https://matchory.com/docs"]
+    }
+  }
+}
+```
+
+## Company Search API
+
+Search existing company database with filters.
+
+```bash
+GET /v1/companies/search?filters={json}
+```
+
+### Filter Structure
+
+```json
+{
+  "include": {
+    "country": ["United States", "Germany"],
+    "city": ["San Francisco", "Berlin"],
+    "size": ["11-50", "51-200"]
+  },
+  "exclude": {
+    "city": ["San Francisco"]
+  },
+  "range": {
+    "founded": {"min": 2015, "max": 2024}
+  }
+}
+```
+
+**Size buckets:** `1-10`, `11-50`, `51-200`, `201-500`, `501-1000`, `1001-5000`, `5001-10000`, `10001+`
+
+## Enrichment API
+
+Add custom data columns to company tables.
+
+### Add Enrichment Column
+
+```bash
+POST /v1/tables/{table_id}/columns
+```
+
+<ParamField path="column_configs" type="array" required>
+  Array of column configuration objects
+  
+  ```json
+  {
+    "kind": "agent",
+    "name": "Tech Stack",
+    "key": "tech_stack",
+    "value": {
+      "agent_type": "research_pro",
+      "prompt": "What technologies does {input} use?",
+      "output_format": "text"
+    }
+  }
+  ```
+</ParamField>
+
+### Agent Types
+
+<ParamField path="agent_type" type="string">
+  Type of research agent to use
+  
+  - `research_pro`: Deep web research with sources (recommended for factual data)
+  - `research`: Lighter web research (faster, less depth)
+  - `research_reasoning`: Research with chain-of-thought reasoning
+  - `llm`: No web search, uses only company profile (for classification/inference)
+  - `linkedin`: LinkedIn-specific research
+</ParamField>
+
+### Output Formats
+
+| Format | Use Case | Example |
+|--------|----------|--------|
+| `text` | Free-form descriptions | "Cloud infrastructure, DevOps tooling" |
+| `number` | Numeric values | 42 |
+| `money` | Monetary amounts | 2500000 |
+| `url` | URLs | "https://example.com" |
+| `email` | Email addresses | "ceo@example.com" |
+| `phone` | Phone numbers | "+1-555-0100" |
+| `date` | Dates | "2024-03-15" |
+| `grade` | Score (1-5 scale) | 4 |
+| `label` | Single tag from list | "Series A" |
+| `select` | Single choice | "SaaS" |
+| `multiselect` | Multiple choices | `["SaaS", "Fintech"]` |
+| `json` | Structured data | `{"aum": 2500, "currency": "USD"}` |
+
+**Note:** `label`, `select`, and `multiselect` require a `labels` array. `json` requires an `output_schema` object.
+
+### Trigger Enrichment Run
+
+```bash
+POST /v1/tables/{table_id}/run
+```
+
+<ParamField path="mode" type="string" required>
+  Run mode
+  
+  - `new`: Only enrich pending cells (recommended)
+  - `all`: Re-run all cells including completed ones
+</ParamField>
+
+<ParamField path="columns" type="array">
+  Column UUIDs to scope the run to
+  
+  Recommended when adding new columns to avoid re-running existing enrichments.
+</ParamField>
+
+**Example: Run specific columns only**
+
+```json
+{
+  "mode": "new",
+  "columns": ["column-uuid-1", "column-uuid-2"]
+}
+```
+
+### Read Table Data
+
+```bash
+GET /v1/tables/{table_id}/data
+```
+
+Returns full table with all rows and cell values.
+
+## People Finder API
+
+Find decision-makers at target companies.
+
+### Add People Finder Column
+
+```bash
+POST /v1/tables/{table_id}/columns
+```
+
+<ParamField path="kind" type="string" required>
+  Must be `company_people_finder`
+</ParamField>
+
+<ParamField path="value.roles" type="array" required>
+  List of role descriptions to search for (broad terms, not exact titles)
+  
+  **Example:** `["VP Sales", "Head of Sales", "Business Development"]`
+</ParamField>
+
+<ParamField path="value.provider" type="string" required>
+  Provider to use (recommended: `research_pro`)
+</ParamField>
+
+<ParamField path="value.max_results" type="integer">
+  Maximum people per company (recommended: 3-5)
+</ParamField>
+
+**Example:**
+
+```json
+{
+  "column_configs": [
+    {
+      "kind": "company_people_finder",
+      "name": "Key Decision Makers",
+      "key": "decision_makers",
+      "value": {
+        "roles": ["VP Sales", "Head of Sales"],
+        "provider": "research_pro",
+        "max_results": 5
+      }
+    }
+  ]
+}
+```
+
+### Child Table Behavior
+
+Adding a `company_people_finder` column automatically creates a linked child table with these columns:
+
+| Column | Key | Kind | Output |
+|--------|-----|------|--------|
+| Person Input | `input` | input | Raw person context |
+| Full Name | `full_name` | agent | Parsed full name |
+| Role | `role` | agent | Current role/title |
+| Profile URL | `profile_url` | agent (url) | LinkedIn URL |
+
+The parent table's response includes:
+
+```json
+{
+  "child_relationships": [
+    {
+      "table_id": "child-people-table-uuid",
+      "relationship_type": "company_people"
+    }
+  ]
+}
+```
+
+### Fetch People Data
+
+```bash
+GET /v1/tables/{child_table_id}/data
+```
+
+Cell values are nested: `row["data"]["full_name"]["value"]["answer"]`
+
+### Optional: Enrich LinkedIn Profiles
+
+Add to the people table for richer profile data:
+
+```json
+{
+  "kind": "agent",
+  "key": "linkedin_data",
+  "name": "LinkedIn Data",
+  "value": {
+    "agent_type": "linkedin",
+    "prompt": "{profile_url}"
+  }
+}
+```
+
+**Note:** References the `profile_url` column key (not `linkedin_url`).

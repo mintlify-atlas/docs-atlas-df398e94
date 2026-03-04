@@ -1,0 +1,464 @@
+---
+title: "Campaign Artifacts"
+description: "Directory structure, file organization, and artifact lifecycle"
+---
+
+GTM Skills automatically create a `claude-code-gtm/` directory to store all campaign artifacts. This page explains the structure, what each file contains, and when it's created.
+
+## Directory Structure
+
+After running a full campaign, you'll have:
+
+```
+claude-code-gtm/
+├── context/
+│   ├── {company}_context.md          ← Global context file
+│   └── {vertical-slug}/              ← Per-vertical research
+│       ├── hypothesis_set.md
+│       └── sourcing_research.md      (optional, from market-research)
+├── prompts/
+│   └── {vertical-slug}/              ← Email prompt templates
+│       ├── en_first_email.md
+│       └── en_follow_up_email.md     (optional)
+└── csv/
+    ├── input/{campaign-slug}/        ← Segmented lists, people, contacts
+    │   ├── companies.csv
+    │   ├── companies_segmented.csv
+    │   ├── people.csv
+    │   └── contacts.csv
+    └── output/{campaign-slug}/       ← Generated emails
+        └── emails.csv
+```
+
+---
+
+## Top-Level Directories
+
+### `context/`
+
+Global company knowledge and per-vertical research.
+
+**Root level:**
+- `{company}_context.md` — The single source of truth for all skills
+  - Created by: `context-building`
+  - Updated by: `context-building` (all modes)
+  - Read by: All skills
+  - Lifecycle: **Permanent** (one per company, continuously updated)
+
+**Per-vertical subdirectories:**
+- `{vertical-slug}/hypothesis_set.md` — Pain hypotheses for this vertical
+  - Created by: `hypothesis-building` OR `market-research`  
+  - Read by: `list-building`, `enrichment-design`, `list-segmentation`, `email-prompt-building`
+  - Lifecycle: **Reusable** (update when entering the vertical again)
+
+- `{vertical-slug}/sourcing_research.md` — Deep research findings (optional)
+  - Created by: `market-research`
+  - Read by: `email-prompt-building`  
+  - Lifecycle: **Reusable** (reference for future campaigns in same vertical)
+
+<Info>
+**Vertical slug examples:**  
+- `enterprise-saas`
+- `logistics-platforms`  
+- `fintech-b2b`
+
+Use lowercase with hyphens, no spaces.
+</Info>
+
+### `prompts/`
+
+Self-contained email prompt templates.
+
+**Structure:**
+```
+prompts/
+└── {vertical-slug}/
+    ├── en_first_email.md
+    └── en_follow_up_email.md
+```
+
+- Created by: `email-prompt-building`
+- Read by: `email-generation`  
+- Lifecycle: **Per-campaign** (update if voice/research changes)
+
+**What's inside:**
+- Voice rules (from context file)
+- Hypothesis-based P1 angles (from research)
+- P2 value angles (from context → What We Do)
+- P4 proof points (from context → Proof Library)  
+- Structural variants (by role/seniority)
+- Banned phrasing
+
+<Warning>
+Prompt templates are **self-contained**. Email generation only reads this file + contact CSV—it doesn't access the context file or research.
+</Warning>
+
+### `csv/`
+
+Input lists and output emails.
+
+**Structure:**
+```
+csv/
+├── input/{campaign-slug}/
+│   ├── companies.csv
+│   ├── companies_segmented.csv
+│   ├── people.csv
+│   └── contacts.csv
+└── output/{campaign-slug}/
+    └── emails.csv
+```
+
+<Info>
+**Campaign slug examples:**  
+- `enterprise-saas-q1`
+- `logistics-platforms-2026-03`
+- `fintech-expansion`
+
+Use descriptive names with dates/quarters.
+</Info>
+
+---
+
+## Input Files (`csv/input/{campaign-slug}/`)
+
+### `companies.csv`
+
+Raw company list from list building.
+
+**Created by:** `list-building`  
+**Columns:**
+- `name` — Company name
+- `domain` — Website domain  
+- `short_description` — 1-2 sentence description
+- `founding_year` — Year founded
+- `employee_count` — Headcount  
+- `hq_country` — Headquarters country
+- `hq_city` — Headquarters city
+- `relevance_score` — 0-100 (from Extruct API)
+
+**When created:**  
+After running Search, Discovery, or Lookalike via `list-building`. This is the starting list before enrichment.
+
+### `companies_segmented.csv`  
+
+Companies with tier assignments and enrichment data.
+
+**Created by:** `list-segmentation`  
+**Columns:**
+- All columns from `companies.csv`
+- Enrichment columns (added by `list-enrichment`)
+  - Custom research fields (e.g., `data_infrastructure_maturity`, `recent_product_launch`)
+- `tier` — 1, 2, or 3 (fit score)
+- `hypothesis_number` — Primary hypothesis match (e.g., `#1`, `#2`)  
+- `hypothesis_name` — Hypothesis short name
+- `segmentation_reasoning` — Why this tier was assigned
+
+**When created:**  
+After enrichment is complete and tiering logic is applied.
+
+**Usage:**
+- Filter to Tier 1 for high-touch emails
+- Filter to Tier 2 for hypothesis-based templates
+- Exclude Tier 3 or route back to re-enrichment
+
+### `people.csv`
+
+Decision makers at target companies.
+
+**Created by:** `people-search`  
+**Columns:**
+- `company_domain` — Matches `domain` from companies.csv
+- `full_name` — Person's name  
+- `first_name` — Extracted first name
+- `last_name` — Extracted last name
+- `job_title` — Current role
+- `linkedin_url` — LinkedIn profile  
+- `seniority` — Junior, Mid, Senior, Executive
+
+**When created:**  
+After running LinkedIn search via Extruct API.
+
+### `contacts.csv`
+
+People with verified contact information.
+
+**Created by:** `email-search`  
+**Columns:**
+- All columns from `people.csv`
+- All enrichment columns from `companies_segmented.csv` (joined on domain)
+- `email` — Verified email
+- `phone` — Phone number (if found)  
+- `email_status` — `verified`, `risky`, `invalid`
+- `confidence_score` — 0-100 (from contact provider)
+
+**When created:**  
+After contact enrichment via Prospeo, FullEnrich, or similar.
+
+**This is the input to email generation.**
+
+---
+
+## Output Files (`csv/output/{campaign-slug}/`)
+
+### `emails.csv`
+
+Generated emails ready for sending.
+
+**Created by:** `email-generation`  
+**Columns:**
+- All columns from `contacts.csv` (for reference)
+- `subject_line` — Email subject
+- `email_body` — Full email text  
+- `p1` — Paragraph 1 (pain angle)
+- `p2` — Paragraph 2 (value prop)
+- `p3` — Paragraph 3 (CTA)
+- `p4` — Paragraph 4 (proof point, optional)  
+- `hypothesis_used` — Which hypothesis was applied
+- `structural_variant` — A, B, C, or D (role-based structure)
+- `word_count` — Total words
+- `flagged_issues` — Any voice violations detected
+
+**When created:**  
+After running the prompt template against `contacts.csv`.
+
+**Usage:**
+- Import to email sequencer (Instantly, Lemlist, etc.)
+- Spot-check for quality before sending
+- Route Tier 1 emails through `email-response-simulation` first
+
+---
+
+## File Lifecycle
+
+<Steps>
+  <Step title="Foundation (Once per Company)">
+    **Created:**
+    - `context/{company}_context.md`
+    
+    **By:** `context-building`
+    
+    **Lifecycle:** Permanent, continuously updated
+  </Step>
+  
+  <Step title="Research (Once per Vertical)">
+    **Created:**
+    - `context/{vertical-slug}/hypothesis_set.md`
+    - `context/{vertical-slug}/sourcing_research.md` (optional)
+    
+    **By:** `hypothesis-building` or `market-research`
+    
+    **Lifecycle:** Reusable across campaigns in same vertical
+  </Step>
+  
+  <Step title="List Building (Per Campaign)">
+    **Created:**
+    - `csv/input/{campaign-slug}/companies.csv`
+    
+    **By:** `list-building`
+    
+    **Lifecycle:** Campaign-specific
+  </Step>
+  
+  <Step title="Enrichment (Per Campaign)">
+    **Created:**
+    - Enrichment columns added to Extruct table
+    - Exported as updated `companies.csv` or merged into segmented CSV
+    
+    **By:** `list-enrichment`
+    
+    **Lifecycle:** Campaign-specific
+  </Step>
+  
+  <Step title="Segmentation (Per Campaign)">
+    **Created:**
+    - `csv/input/{campaign-slug}/companies_segmented.csv`
+    
+    **By:** `list-segmentation`
+    
+    **Lifecycle:** Campaign-specific
+  </Step>
+  
+  <Step title="People & Contact Search (Per Campaign)">
+    **Created:**
+    - `csv/input/{campaign-slug}/people.csv`
+    - `csv/input/{campaign-slug}/contacts.csv`
+    
+    **By:** `people-search` → `email-search`
+    
+    **Lifecycle:** Campaign-specific
+  </Step>
+  
+  <Step title="Email Prompt (Per Vertical or Campaign)">
+    **Created:**
+    - `prompts/{vertical-slug}/en_first_email.md`
+    
+    **By:** `email-prompt-building`
+    
+    **Lifecycle:** Reusable if voice/research unchanged, otherwise update per campaign
+  </Step>
+  
+  <Step title="Email Generation (Per Campaign)">
+    **Created:**
+    - `csv/output/{campaign-slug}/emails.csv`
+    
+    **By:** `email-generation`
+    
+    **Lifecycle:** Campaign-specific, final output
+  </Step>
+</Steps>
+
+---
+
+## Naming Conventions
+
+### Company Name
+
+Use the company's primary domain without TLD:
+
+<CodeGroup>
+```bash Good
+extruct_context.md
+salesforce_context.md  
+acme_context.md
+```
+
+```bash Bad  
+extruct.ai_context.md
+Extruct_context.md
+my-company_context.md
+```
+</CodeGroup>
+
+### Vertical Slug
+
+Lowercase, hyphen-separated, descriptive:
+
+<CodeGroup>
+```bash Good
+enterprise-saas
+logistics-platforms
+fintech-b2b-payments  
+marketplace-platforms
+```
+
+```bash Bad
+Enterprise_SaaS
+saas
+vertical1
+test
+```
+</CodeGroup>
+
+### Campaign Slug  
+
+Descriptive + date or identifier:
+
+<CodeGroup>
+```bash Good
+enterprise-saas-q1-2026
+logistics-expansion-march
+fintech-tier1-test
+```
+
+```bash Bad  
+campaign1
+test
+my-campaign
+```
+</CodeGroup>
+
+---
+
+## File Retention
+
+**Keep forever:**
+- `context/{company}_context.md` — continuously updated
+- `context/{vertical-slug}/` — reusable research
+
+**Keep per campaign:**
+- `csv/input/{campaign-slug}/` — for reference and re-runs
+- `csv/output/{campaign-slug}/` — for results tracking  
+
+**Update as needed:**
+- `prompts/{vertical-slug}/` — update when voice or research changes
+
+<Tip>
+After a campaign completes, import results back to the context file using `context-building` feedback loop mode. This closes the learning loop.
+</Tip>
+
+---
+
+## Example: Full Campaign File Tree
+
+Running this prompt:
+
+```bash
+I'm building www.extruct.ai.
+Find 200 enterprise SaaS platforms similar to salesforce.com,
+enrich with relevant data, and generate emails to VPs of Product.
+```
+
+Creates:
+
+```
+claude-code-gtm/
+├── context/
+│   ├── extruct_context.md
+│   └── enterprise-saas/
+│       └── hypothesis_set.md
+├── prompts/
+│   └── enterprise-saas/
+│       └── en_first_email.md
+└── csv/
+    ├── input/enterprise-saas-q1/
+    │   ├── companies.csv                    (200 rows)
+    │   ├── companies_segmented.csv          (200 rows + tiers)
+    │   ├── people.csv                       (~150 VPs found)
+    │   └── contacts.csv                     (~120 with emails)
+    └── output/enterprise-saas-q1/
+        └── emails.csv                       (120 generated emails)
+```
+
+---
+
+## Extruct Table Integration
+
+Some artifacts live in Extruct tables instead of local CSVs:
+
+**What stays in Extruct:**
+- Company lists uploaded by `list-building`
+- Enrichment columns added by `list-enrichment`  
+- People search results from `people-search`
+
+**What's exported to CSV:**
+- Final segmented company list (`companies_segmented.csv`)
+- Contacts with emails (`contacts.csv`)  
+- Generated emails (`emails.csv`)
+
+**Why hybrid?**
+- Extruct tables are great for research and enrichment (parallel agents, web UI)
+- CSVs are great for email generation and sequencer imports (local processing)
+
+<Info>
+You can access Extruct tables anytime at `https://app.extruct.ai/tables/{table_id}`
+</Info>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="End-to-End Workflow" icon="diagram-project" href="/concepts/workflow">
+    See how these files are created in a full campaign
+  </Card>
+  <Card title="Context Files" icon="file-lines" href="/concepts/context-files">
+    Deep dive on the global context file structure  
+  </Card>
+  <Card title="list-building" icon="list" href="/skills/list-building">
+    Learn how companies.csv is created
+  </Card>
+  <Card title="email-generation" icon="envelope" href="/skills/email-generation">
+    Learn how emails.csv is created
+  </Card>
+</CardGroup>

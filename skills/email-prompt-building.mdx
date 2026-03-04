@@ -1,0 +1,332 @@
+---
+title: "Email Prompt Building"
+description: "Generate self-contained email prompt templates for cold outreach campaigns"
+---
+
+## Overview
+
+Generate self-contained email prompt templates for cold outreach campaigns. Reads from the company context file (voice, value prop, proof points) and campaign research (hypotheses, data points) to produce a prompt that the `email-generation` skill runs per-row against a contact CSV. One prompt per campaign.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Create a new cold email campaign
+- Build an outreach prompt for a new vertical
+- Draft email templates with research data
+- Set up an email sequence
+
+**Trigger phrases:** "cold email", "outreach prompt", "email campaign", "new vertical email", "draft email prompt", "email sequence"
+
+## Architectural Principle
+
+<Info>
+**This skill is a generator, not a template.** It reads the company context file and campaign research, reasons about what fits this specific audience, and produces a self-contained prompt. Each campaign gets its own prompt. Each company gets its own context file. Nothing is hardcoded in this skill.
+</Info>
+
+```
+                      BUILD TIME (this skill)
+                      ┌─────────────────────────────────────┐
+context file ────────▶│                                     │
+research / hypothesis ▶│  Synthesize into self-contained     │──▶ prompt template (.md)
+enrichment columns ───▶│  prompt with reasoning baked in     │
+                      └─────────────────────────────────────┘
+
+                      RUN TIME (email-generation skill)
+                      ┌─────────────────────────────────────┐
+prompt template (.md) ▶│                                     │
+contact CSV ──────────▶│  Generate emails per row            │──▶ emails CSV
+                      └─────────────────────────────────────┘
+```
+
+## What This Skill Reads
+
+| Input | Source | What to Extract |
+|-------|--------|----------------|
+| Context file | `claude-code-gtm/context/{company}_context.md` | Voice, sender, value prop, proof library, key numbers, banned words |
+| Research | `claude-code-gtm/context/{vertical-slug}/sourcing_research.md` | Verified data points, statistics, tool comparisons |
+| Hypothesis set | `claude-code-gtm/context/{vertical-slug}/hypothesis_set.md` | Numbered hypotheses with mechanisms and evidence |
+| Enrichment columns | CSV headers from list-enrichment output | Field names and what they contain |
+| Campaign brief | User describes audience, roles, goals | Target vertical, role types, campaign angle |
+
+## What This Skill Produces
+
+A single `.md` file at `claude-code-gtm/prompts/{vertical-slug}/en_first_email.md` containing:
+
+1. **Role line** — who the LLM acts as (from context file → Voice → Sender)
+2. **Core pain** — why this audience has this problem (from research, not generic)
+3. **Voice rules** — tone, constraints, banned words (from context file → Voice)
+4. **Research context** — verified data points embedded directly
+5. **Enrichment data fields** — table mapping each CSV column to how to use it
+6. **Hypothesis-based P1 rules** — rich descriptions with research data, mechanisms, evidence
+7. **P2 value angle** — synthesized from context file → What We Do, adapted per hypothesis
+8. **P3 CTA rules** — campaign-specific examples
+9. **P4 proof points** — selected from context file → Proof Library, with conditions for when to use each
+10. **Output format** — JSON keys, word limits
+11. **Banned phrasing** — from context file → Voice → Banned words + campaign-specific additions
+
+## Building a Campaign Prompt
+
+<Steps>
+  <Step title="Read Upstream Data">
+    Read these files before writing anything:
+    
+    ```
+    claude-code-gtm/context/{company}_context.md
+    claude-code-gtm/context/{vertical-slug}/sourcing_research.md
+    claude-code-gtm/context/{vertical-slug}/hypothesis_set.md
+    ```
+  </Step>
+  
+  <Step title="Synthesize (The Reasoning Step)">
+    This is where the skill does real work. For each section of the prompt:
+    
+    <Accordion title="Voice → from context file">
+      - Read `## Voice` section
+      - Copy sender name, tone, constraints, banned words into the prompt
+      - **Do NOT invent voice rules.** If the context file doesn't have them, ask the user.
+    </Accordion>
+    
+    <Accordion title="P1 → from research + hypotheses">
+      For each hypothesis in the campaign:
+      - Write a rich description using data points from the research
+      - Explain the MECHANISM (why this pain exists), not just the symptom
+      - Include specific numbers from the research (coverage percentages, decay rates, time costs)
+      - Write P1 rules that reference enrichment fields by name
+      - **NEVER use generic framing** like "scores suppliers" or "manages vendors." Use the `platform_type` enrichment field or derive the actual description from the company profile.
+    </Accordion>
+    
+    <Accordion title="Competitive Awareness Rules">
+      If enrichment data or research reveals the prospect has an existing capability that overlaps:
+      
+      1. **NEVER pitch as a replacement.** Position as a data layer underneath.
+      2. Acknowledge their existing tool by name in P1.
+      3. Shift P2 from "here's what we do" to "here's what we add to what you already do."
+      4. If the prospect FOUNDED a competing product (career history):
+         - Use Variant D (peer founder) and reference shared context, OR
+         - Deprioritize. Flag to user as "risky send, needs manual review."
+    </Accordion>
+    
+    <Accordion title="P2 → from context file → What We Do">
+      - Read the product description, email-safe value prop, and key numbers
+      - Reason about which value angle matters for THIS audience and THIS hypothesis
+      - Write 2-3 hypothesis-matched value angles with the reasoning embedded
+      - Use the email-safe value prop, not the raw version (avoid banned words)
+      
+      **Example query rules:**
+      - The example query MUST reference a vertical or category the prospect's platform actually serves
+      - NEVER reuse the same example query across different prospects
+      - Format: "\{category\} in \{geography\} under \{size constraint\}"
+    </Accordion>
+    
+    <Accordion title="P4 → from context file → Proof Library">
+      Select proof points based on THREE dimensions:
+      
+      | Dimension | Logic |
+      |-----------|-------|
+      | **Peer relevance** | Proof company should be same size or larger than prospect. Never cite a smaller company as proof to a bigger one. |
+      | **Hypothesis alignment** | Proof point should validate the same hypothesis used in P1. |
+      | **Non-redundancy** | If a stat appears in P2, do NOT repeat it in P4. |
+      
+      <Warning>
+      If no proof point meets all three criteria, drop P4 entirely (use a shorter structural variant instead).
+      </Warning>
+    </Accordion>
+    
+    <Accordion title="Banned Phrasing">
+      - Start with banned words from context file → Voice
+      - Add any campaign-specific banned phrases discovered during generation or email-response-simulation
+    </Accordion>
+  </Step>
+  
+  <Step title="Assemble the Prompt">
+    Write the `.md` file following this skeleton:
+    
+    ```markdown
+    [Role line from context → Voice → Sender]
+    
+    [Core pain — 2-3 sentences from research. Not generic.]
+    
+    ## Hard constraints
+    [From context → Voice. Copied verbatim.]
+    
+    ## Research context
+    [Verified data points from sourcing_research.md. Actual numbers, tool names,
+    coverage gaps. This is the foundation for P1.]
+    
+    ## Enrichment data fields
+    [Table: field name → what it tells you → how to use it in the email]
+    
+    ## Hypothesis-based P1
+    [Per hypothesis: mechanism, evidence, usage rules.
+    All grounded in research data.]
+    
+    ## Role-based emphasis
+    [Map role keywords → emphasis. Use specific data points.]
+    
+    ## Structural variants
+    [Select variant per recipient based on role + seniority from enrichment data.]
+    
+    ## Competitive awareness
+    [Rules for handling prospects with overlapping capabilities.]
+    
+    ## Proof point selection
+    [Three-dimensional selection: peer relevance, hypothesis alignment, non-redundancy.]
+    
+    ## Example query rules
+    [Must reference prospect's actual vertical. Never reuse across prospects.]
+    
+    P1 — [Rules referencing hypotheses and enrichment fields]
+    P2 — [Synthesized value angles per hypothesis. Key numbers from context.]
+    P3 — [CTA rules with campaign-specific examples]
+    P4 — [Proof points with conditions. Drop if no proof meets all three criteria.]
+    
+    ## Output format
+    [JSON keys]
+    
+    ## Banned phrasing
+    [From context → Voice + campaign additions]
+    ```
+  </Step>
+  
+  <Step title="Self-Containment Check">
+    Before saving, verify:
+    
+    - [ ] Voice rules come from context file, not hardcoded in this skill
+    - [ ] Structural variants are defined with role-based selection logic
+    - [ ] P1 uses actual platform description, not generic framing
+    - [ ] P2 example queries reference the prospect's actual vertical
+    - [ ] P4 proof points pass all three selection criteria
+    - [ ] Competitive awareness rules are included
+    - [ ] Research data is embedded with actual numbers
+    - [ ] No references to external files — the email-generation skill only needs this prompt + CSV
+    - [ ] Banned words from context file are included
+  </Step>
+  
+  <Step title="Save">
+    Save prompt templates to:
+    
+    ```
+    claude-code-gtm/prompts/{vertical-slug}/en_first_email.md
+    claude-code-gtm/prompts/{vertical-slug}/en_follow_up_email.md  (if follow-up needed)
+    ```
+  </Step>
+</Steps>
+
+## Structural Variants
+
+Select structure based on role + seniority from enrichment data. These are defaults. Override from context file or user input.
+
+| Variant | Who | Paragraphs | Max Words | Notes |
+|---------|-----|------------|-----------|-------|
+| **A: Technical Evaluator** | CTO, VP Eng, Head of Data | 4 (P1-P4) | 120 | Full structure with proof point PS |
+| **B: Founder / CEO** | Small company (less than 50 people) | 3 (P1-P3) | 90 | Merge P2+P4, no separate PS |
+| **C: Executive / Board** | Chairman, board member, delegates decisions | 2-3 | 70 | Forwardable, one sharp observation |
+| **D: Peer Founder** | Built something adjacent or competing | 2 | 60 | Peer-to-peer tone, no product pitch |
+
+### Variant Details
+
+<Accordion title="Variant A: Technical Evaluator">
+  **Recipients:** CTO, VP Eng, Head of Data
+  
+  **Structure:** 4 paragraphs, ≤120 words
+  - P1: Pain with concrete data point
+  - P2: Product specs (API-first, pricing model, integration)
+  - P3: Low-effort CTA (sample search, not a meeting)
+  - P4: Peer proof point (PS)
+</Accordion>
+
+<Accordion title="Variant B: Founder / CEO">
+  **Recipients:** Founder / CEO at small company (less than 50 people)
+  
+  **Structure:** 3 paragraphs, ≤90 words. No PS.
+  - P1: Pain tied to their specific stage or market move
+  - P2: Value + proof in one paragraph (merge P2+P4)
+  - P3: CTA
+</Accordion>
+
+<Accordion title="Variant C: Executive / Chairman / Board">
+  **Recipients:** Delegates decisions
+  
+  **Structure:** 2-3 paragraphs, ≤70 words. Forwardable.
+  - P1: One sharp observation about their platform
+  - P2: One sentence value + CTA combined
+  - Optional P3: Proof point only if it's a name they'd recognize
+</Accordion>
+
+<Accordion title="Variant D: Peer Founder">
+  **Recipients:** Built something adjacent or competing
+  
+  **Structure:** 2 paragraphs, ≤60 words. Peer-to-peer tone.
+  - P1: Acknowledge shared context, state the angle without explaining basics
+  - P2: Specific offer, no product pitch
+</Accordion>
+
+### Follow-up Email
+
+- 2 paragraphs, ≤60 words total
+- P1: Case study + capability + example
+- P2: Sector-shaped CTA (different angle from first email)
+
+## Prompt Patterns
+
+<Accordion title="Pattern 1: Pain-Theme Segmentation">
+  Map 3-5 pain themes from your hypothesis set, then branch P1 based on which theme fits each recipient.
+  
+  **When to use:** You have a hypothesis set with distinct pain points and enrichment data to match companies to themes.
+</Accordion>
+
+<Accordion title="Pattern 2: Role-Based Emphasis">
+  Vary the angle based on the recipient's seniority and function:
+  - Analysts/researchers: precision, coverage, manual work reduction
+  - Directors/VPs: speed, cost discipline, cross-team visibility
+  - C-suite: strategic advantage, competitive edge, scale
+  
+  **When to use:** Your list spans multiple seniority levels within the same vertical.
+</Accordion>
+
+<Accordion title="Pattern 3: Post-Event Outreach">
+  Use a shared event as the opener.
+  
+  **Structure:**
+  - P1: Event reference + observation about a trend discussed
+  - P2: Simple question about how they currently handle [relevant process]
+  - P3: Product explanation with concrete outcome
+  - P4: Soft CTA (no hard meeting ask)
+  
+  **When to use:** After a conference, webinar, or industry event.
+</Accordion>
+
+<Accordion title="Pattern 4: Multi-Email Sequence">
+  First email + follow-up with different angles.
+  
+  **Structure:**
+  - Email 1: Hypothesis-driven opener → product value → CTA → proof point
+  - Email 2 (follow-up): Different case study → different capability angle → sector-shaped CTA
+  
+  **Rules:**
+  - Follow-up must use a different value angle than email 1
+  - Never say "quick follow-up" or "circling back"
+  - Follow-up is shorter (≤60 words vs ≤120)
+</Accordion>
+
+## Cross-Campaign Defaults
+
+| Rule | Default |
+|------|--------|
+| Max words (first email) | Varies by structural variant (60-120) |
+| Max words (follow-up) | 60 |
+| Paragraphs (first email) | Varies by structural variant (2-4) |
+| Paragraphs (follow-up) | 2 |
+| Greeting format | "Hey {FirstName}," |
+| Firm mentions | At most once |
+| Sector naming | Always explicit, never "sectors like yours" |
+| Output format | JSON (keys: recipient_name, recipient_company, subject, greeting, paragraphs per variant) |
+| Prompt location | `claude-code-gtm/prompts/{vertical-slug}/` |
+
+## Next Steps
+
+After building the prompt template:
+
+1. Proceed to `email-generation` to run the prompt against your contact CSV
+2. Or review the prompt and refine voice rules
+3. Or test with a small sample before full generation

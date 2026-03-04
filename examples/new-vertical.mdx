@@ -1,0 +1,421 @@
+---
+title: "Exploring a New Vertical"
+description: "Example workflow entering a completely new vertical with market research, hypothesis generation, and targeted list building"
+---
+
+This example shows how to explore a new vertical from scratch when you don't have a seed customer — using market research, hypothesis building, and discovery to find your ICP.
+
+## Scenario
+
+You're building Extruct (company intelligence API), and you want to explore the **commercial real estate (CRE) tech** vertical. You have no customers in this space yet, but you think CRE platforms might need company data for tenant screening or market analysis.
+
+## Starting Prompt
+
+```
+I'm building www.extruct.ai - a company intelligence API.
+I want to explore the commercial real estate tech vertical.
+I think they might need company data for tenant screening
+or market analysis, but I'm not sure. Help me research
+and plan a campaign.
+```
+
+<Steps>
+
+### Step 1: Context Check
+
+Claude checks if a context file exists. If not, it triggers **context-building** mode.
+
+**Claude asks:**
+
+> I don't see a context file yet. Let me capture your product info and voice rules first, then we'll research CRE tech.
+> 
+> 1. Product one-liner?
+> 2. Core value proposition?
+> 3. Who sends outreach emails?
+> 4. Preferred tone?
+> 5. Any banned words or phrases?
+
+**You provide:**
+
+- Product: API-first company search, lookalike, and enrichment
+- Value prop: Developers add company intelligence to their product without building scrapers
+- Sender: Dima from Extruct
+- Tone: Technical, direct, builder-to-builder
+- Banned: "revolutionary", "cutting-edge", "game-changer", "leverage"
+
+**Claude creates:**
+
+```
+claude-code-gtm/context/extruct_context.md
+```
+
+### Step 2: Market Research
+
+Claude uses the **market-research** skill to research the CRE tech vertical and identify pain points.
+
+**Claude asks for your research API preference:**
+
+> For vertical research, I can use:
+> 1. Perplexity API (recommended - $20/mo for 5M tokens)
+> 2. OpenAI with web search
+> 3. Anthropic (no native search, would need separate web API)
+>
+> Which do you prefer?
+
+**You choose Perplexity.**
+
+**Claude runs research queries:**
+
+```bash
+curl -X POST "https://api.perplexity.ai/chat/completions" \
+  -H "Authorization: Bearer $PERPLEXITY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-3.1-sonar-large-128k-online",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Research commercial real estate technology platforms. What data challenges do they face when analyzing tenants, evaluating properties, or conducting market research? Include specific examples of CRE tech companies and their workflows."
+      }
+    ]
+  }'
+```
+
+**Research findings:**
+
+> **Commercial Real Estate Tech - Market Research**
+>
+> **Key Players:**
+> - VTS, Hightower, Reonomy, CompStak, Cherre
+> - Property management platforms, tenant screening, market analysis tools
+>
+> **Data Challenges Identified:**
+>
+> 1. **Tenant creditworthiness**: Need to evaluate business health of potential tenants beyond credit scores
+> 2. **Market comps**: Analyzing similar tenants in a submarket requires company data (industry, size, growth trajectory)
+> 3. **Portfolio risk**: Understanding tenant industry concentration and business stability
+> 4. **Deal sourcing**: Identifying potential tenants or buyers matching property profile
+> 5. **Data fragmentation**: CRE data is in MLS, CoStar, etc., but company-level data is missing
+>
+> **Example workflows:**
+> - VTS users manually research tenant companies via LinkedIn, company websites
+> - Brokers use CoStar for property data but Google Search for tenant company info
+> - Tenant screening tools integrate credit APIs but lack business intelligence
+
+**Claude saves:**
+
+```
+claude-code-gtm/context/cre-tech/sourcing_research.md
+```
+
+### Step 3: Hypothesis Building
+
+Claude uses **hypothesis-building** to convert research into testable hypotheses.
+
+**Claude drafts:**
+
+> Based on the research, here are 5 hypotheses for CRE tech platforms:
+>
+> **#1 Tenant creditworthiness gap**  
+> CRE platforms screen tenants with credit APIs but lack real-time business health signals (headcount trends, funding, growth trajectory). Manual research is time-consuming and stale.
+> Best fit: Tenant screening platforms, property management software
+> Search angle: "tenant screening software for commercial real estate", "property management platforms with tenant evaluation"
+>
+> **#2 Market comp analysis**  
+> Brokers and analysts need to comp tenant quality ("What other Series B SaaS companies are in this submarket?") but have no structured way to query this.
+> Best fit: Market analysis tools, brokerage platforms
+> Search angle: "commercial real estate market analysis software", "CRE brokerage platforms"
+>
+> **#3 Portfolio risk modeling**  
+> REITs and property owners want to model tenant concentration risk ("What % of my tenants are in declining industries?") but lack company intelligence data.
+> Best fit: Portfolio management tools, REIT analytics platforms
+> Search angle: "commercial real estate portfolio management software"
+>
+> **#4 Deal sourcing automation**  
+> Brokers manually research potential tenants or buyers matching a property profile. This could be automated with company search API.
+> Best fit: Deal sourcing platforms, CRE CRM tools
+> Search angle: "commercial real estate deal sourcing platforms", "CRE CRM software"
+>
+> **#5 Data fragmentation**  
+> CRE platforms integrate property data APIs (CoStar, MLS) but still manually enrich company-level data for tenants.
+> Best fit: CRE data platforms, property intelligence tools
+> Search angle: "commercial real estate data platforms", "property intelligence APIs"
+>
+> Do these hypotheses resonate? Any to adjust or add?
+
+**You refine #1 and #2**, and Claude saves:
+
+```
+claude-code-gtm/context/cre-tech/hypothesis_set.md
+```
+
+### Step 4: List Building
+
+Claude uses **list-building** in semantic search + discovery mode (no seed company available).
+
+**Search queries (from hypothesis search angles):**
+
+```bash
+# Query 1: Tenant screening
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "tenant screening software for commercial real estate property managers",
+    "filters": {
+      "include": {
+        "employee_count": ["11-50", "51-200", "201-500"]
+      }
+    },
+    "limit": 100
+  }'
+
+# Query 2: Market analysis platforms
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "commercial real estate market analysis and comp software",
+    "limit": 100
+  }'
+
+# Query 3: Portfolio management
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "commercial real estate portfolio management and risk analytics platforms",
+    "limit": 100
+  }'
+
+# Query 4: CRE data platforms
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "commercial real estate data intelligence and API platforms",
+    "limit": 100
+  }'
+```
+
+**Search results:** 312 companies found, 289 after deduplication
+
+**Discovery task for deeper qualification:**
+
+```bash
+curl -X POST "https://api.extruct.ai/v1/discovery_tasks" \
+  -d '{
+    "query": "Commercial real estate technology platforms that help property managers, brokers, or investors evaluate tenants, analyze market opportunities, or manage portfolios. These companies likely have a product that requires understanding tenant business health, industry trends, or company-level data about potential tenants or comparable properties.",
+    "desired_num_results": 50,
+    "criteria": [
+      {
+        "key": "tenant_data_need",
+        "name": "Tenant Data Needs",
+        "criterion": "Does this company's product require company-level data about tenants (e.g., business health, industry, size)? Grade 1-5."
+      },
+      {
+        "key": "api_integration_readiness",
+        "name": "API Readiness",
+        "criterion": "Does this company mention APIs, integrations, or data partnerships in their product? Grade 1-5."
+      }
+    ]
+  }'
+
+# Poll for completion
+curl -X GET "https://api.extruct.ai/v1/discovery_tasks/dtask_xyz123"
+
+# Fetch results
+curl -X GET "https://api.extruct.ai/v1/discovery_tasks/dtask_xyz123/results?limit=50"
+```
+
+**Discovery results:** 48 companies found, 31 with score ≥3.5 on both criteria
+
+**Combined list:** 311 unique companies (search + discovery, deduplicated)
+
+**Created table:** `tbl_cre_exploration`
+
+### Step 5: Enrichment Design
+
+Claude uses **enrichment-design** to design columns that validate hypothesis fit.
+
+**Claude proposes:**
+
+> **Segmentation columns** (validate hypothesis fit):
+>
+> 1. **Tenant Evaluation Feature**  
+>    Type: select  
+>    Options: Yes - automated, Yes - manual, No, Unclear  
+>    Prompt: Does {input} offer tenant screening, evaluation, or creditworthiness features?
+>
+> 2. **Company Data Usage Signals**  
+>    Type: text  
+>    Prompt: Find evidence that {input} uses or needs company-level data (industry classification, headcount, funding, business health) for their CRE workflows
+>
+> 3. **API Integration Mentions**  
+>    Type: grade (1-5)  
+>    Prompt: Grade how API-forward {input} is based on product descriptions, integrations page, or developer docs
+>
+> **Personalization columns** (hooks for email):
+>
+> 4. **Recent Product Updates**  
+>    Type: text  
+>    Prompt: Find any recent product launches, feature announcements, or funding news from {input} in the last 6 months
+>
+> Does this cover the right data points?
+
+**You approve.**
+
+### Step 6: List Enrichment
+
+Claude uses **list-enrichment** to run the enrichment columns.
+
+```bash
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_cre_exploration/columns" \
+  -d '{...column configs...}'
+
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_cre_exploration/run"
+```
+
+**Enrichment progress:**
+
+> Enriching 311 companies × 4 columns = 1,244 cells  
+> Estimated time: 12-15 minutes
+>
+> [Progress updates...]
+>
+> Enrichment complete ✓
+
+### Step 7: List Segmentation
+
+Claude uses **list-segmentation** to tier companies.
+
+**Segmentation output:**
+
+```markdown
+## Tier 1 — 28 companies (9.0%)
+
+| Company | Domain | Hypothesis | Hook Signal |
+|---------|--------|------------|-------------|
+| TenantBase | tenantbase.com | #1 Tenant creditworthiness | Launched "Business Health Score" feature 3 months ago |
+| Dealpath | dealpath.com | #3 Portfolio risk | Blog post on "tenant industry diversification" |
+| CREXi | crexi.com | #4 Deal sourcing | Job posting for API Integration Engineer |
+
+## Tier 2 — 189 companies (60.8%)
+
+Medium fit, templated outreach
+
+## Tier 3 — 94 companies (30.2%)
+
+Low data quality or hypothesis mismatch, hold for re-enrichment
+```
+
+**Saved CSV:**
+
+```
+claude-code-gtm/csv/input/cre-exploration/segmented_list.csv
+```
+
+### Step 8: Email Prompt Building
+
+Claude uses **email-prompt-building** to create a campaign-specific prompt.
+
+**Prompt template structure:**
+
+```markdown
+# Email Prompt: CRE Tech Exploration Campaign
+
+## Voice
+- Sender: Dima from Extruct
+- Tone: Technical, direct, builder-to-builder
+- Banned words: revolutionary, cutting-edge, leverage
+
+## Hypothesis-to-P1 Mapping
+- #1 Tenant creditworthiness → Reference tenant_evaluation_feature data
+- #2 Market comp analysis → Reference broker/analyst workflows
+- #3 Portfolio risk → Reference REIT/portfolio management pain
+
+## P2 Template
+Extruct is an API for company search and intelligence. Example query relevant to CRE:
+"[Generate hypothesis-specific example using CRE context]"
+
+## P4 Proof Points
+- If tenant screening → "PS. A property tech platform uses this to auto-score tenant stability."
+- If market analysis → "PS. A CRE analytics tool uses this for market comp reports."
+
+...
+```
+
+### Step 9: Email Generation
+
+Claude uses **email-generation** to create emails.
+
+**Example Tier 1 email (TenantBase):**
+
+```
+Subject: Company data for business health scoring
+
+Hi [First Name],
+
+I saw TenantBase recently launched a Business Health Score feature for tenant 
+evaluation. We've worked with property tech platforms on similar features.
+
+Extruct is an API for company search and intelligence. You can query by 
+description and get structured company profiles. Example for tenant screening:
+
+"Find retail companies in Austin, TX with 20-100 employees, founded after 2018, 
+with recent funding"
+
+A property management platform uses this to pre-qualify tenants before manual 
+review.
+
+Worth a conversation?
+
+Dima
+Extruct
+
+PS. API is free for search (unlimited queries). Enrichment starts at $59/mo 
+for 1K credits.
+```
+
+**Generated emails:**
+
+```
+claude-code-gtm/csv/output/cre-exploration/emails.csv
+```
+
+217 emails generated (Tier 1 + Tier 2)
+
+### Step 10: Campaign Upload
+
+Claude uses **campaign-sending** to upload to Instantly.
+
+> Uploaded 217 contacts to campaign "CRE Tech Exploration"
+> - Tier 1: 28 (personalized sequence)
+> - Tier 2: 189 (templated sequence)
+
+</Steps>
+
+## Final Artifacts
+
+```
+claude-code-gtm/
+├── context/
+│   ├── extruct_context.md
+│   └── cre-tech/
+│       ├── sourcing_research.md
+│       └── hypothesis_set.md
+├── prompts/
+│   └── cre-tech/
+│       └── email_template.md
+└── csv/
+    ├── input/cre-exploration/
+    │   └── segmented_list.csv
+    └── output/cre-exploration/
+        └── emails.csv
+```
+
+## Campaign Results (3 weeks)
+
+- **Tier 1**: 28 sent, 5 replies (17.9%), 2 positive, 1 demo booked
+- **Tier 2**: 189 sent, 8 replies (4.2%), 1 positive
+- **Top hypothesis**: #1 Tenant creditworthiness (5 of 6 positive replies)
+- **Key learning**: "API readiness" enrichment was strong predictor of reply quality
+
+## Next Steps
+
+1. Update context file with win case (if deal closes)
+2. Refine hypothesis #1 based on positive replies
+3. Run second wave with tighter ICP filters (API-forward + tenant screening feature)
+4. Add "Data fragmentation" hypothesis to testing pool

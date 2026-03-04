@@ -1,0 +1,459 @@
+---
+title: "Extracting Signals from Call Transcripts"
+description: "Example workflow capturing ICP signals, win case data, and proof points from sales call recordings"
+---
+
+This example shows how to extract actionable signals from call transcripts or meeting notes to continuously improve your context file, hypotheses, and email campaigns.
+
+## Scenario
+
+You just had a discovery call with a prospect (or won customer). The call transcript contains valuable signals about:
+- Why they were interested (hypothesis validation)
+- What language resonated
+- Specific pain points they mentioned
+- Objections or concerns
+- Proof point opportunities
+
+You want to capture these signals and update your context file.
+
+## Starting Prompt
+
+```
+I just finished a call with a prospect.
+Here's the transcript [paste transcript].
+Extract signals and update my context file.
+```
+
+**Call Transcript:**
+
+```
+[2025-03-04 10:30 AM - Discovery Call]
+
+Danny (Extruct): Thanks for taking the time. I saw you're building tenant 
+screening features at PropertyFlow. What's the current workflow?
+
+Sarah (PropertyFlow, Head of Product): Yeah, so our customers are property 
+managers who need to evaluate potential tenants — mostly small businesses 
+leasing commercial space. Right now they're doing this super manually.
+
+Danny: What does "manually" mean?
+
+Sarah: They Google the business name, check LinkedIn, maybe look at Yelp 
+reviews. They're trying to figure out: is this business legit? Are they 
+growing or shrinking? What industry are they in? The problem is this takes 
+20-30 minutes per tenant, and our customers are evaluating 50+ tenants a month.
+
+Danny: Got it. So it's a time sink, but also — is the data they find reliable?
+
+Sarah: Exactly. Half the time they can't even find the company. Or they find 
+some random LinkedIn profile but can't tell if it's the right company. We 
+need a programmatic way to look up: company name → structured profile with 
+headcount, industry, founding year, funding status, etc.
+
+Danny: Makes sense. Are you building this yourself or looking for an API?
+
+Sarah: We tried building it. Our engineers spent 3 weeks on scrapers. It 
+sort of worked, but the data was super inconsistent and it kept breaking. 
+We realized this isn't our core competency. We'd rather integrate an API 
+if there's something reliable.
+
+Danny: What about existing data providers? Clearbit, ZoomInfo?
+
+Sarah: We looked at Clearbit. Two issues: (1) their coverage is mostly 
+tech companies and larger businesses — we need smaller, local businesses too. 
+(2) Their pricing is per-contact, but we don't need emails or people data, 
+just company-level stuff. Felt like overkill.
+
+Danny: Got it. So you need: SMB coverage, company-only data, API-first. 
+What's the priority — speed, coverage, or cost?
+
+Sarah: Coverage first. If we can't find the company, everything else is 
+moot. But yeah, speed matters too — can't have our customers waiting 30 
+seconds for a lookup.
+
+Danny: And what happens if you can't solve this? Does the feature get 
+deprioritized?
+
+Sarah: Honestly, yes. We've already pushed the release twice. This is a 
+top customer request, but if we can't get the data layer right, we'll have 
+to kill it. That would suck because tenant screening is a key differentiator 
+for us.
+
+Danny: Makes sense. Let me show you Extruct — we're an API-first company 
+intelligence platform. You can search by company name or domain and get 
+back structured profiles: industry, headcount, location, funding, etc. 
+Coverage is strong for SMBs, and response time is under 500ms for lookups.
+
+Sarah: Interesting. What's the pricing model?
+
+Danny: Search is free and unlimited. If you need enrichment beyond basic 
+profiles — like custom research columns, deep company data — that's 
+1 credit per cell, and plans start at $59/mo for 1K credits. But for 
+tenant screening, you'd probably just use search, which is free.
+
+Sarah: Wait, search is actually free? That's... surprising.
+
+Danny: Yeah, we want developers to build on Extruct. Free search lowers 
+the barrier. Most customers start with search, then add enrichment later 
+when they need more depth.
+
+Sarah: Okay, I'm interested. Can we test this with a sample of our tenant 
+data? Maybe 50-100 companies?
+
+Danny: Absolutely. I'll send you API access today. You can test search 
+and see how coverage + speed feel for your use case.
+
+Sarah: Perfect. One more question — do you have any other property tech 
+customers? Just want to make sure this isn't a one-off.
+
+Danny: We're working with a procurement automation platform that uses us 
+for vendor scoring — similar workflow to tenant screening. And we're in 
+conversations with two other property tech companies, but you'd be our 
+first tenant screening customer.
+
+Sarah: Cool, that's fine. Honestly, the fact that you have SMB coverage 
+and free search is already way ahead of the other options we've looked at.
+
+Danny: Great. I'll follow up with API docs and a sandbox key in the next hour.
+
+Sarah: Sounds good. Talk soon.
+```
+
+<Steps>
+
+### Step 1: Signal Extraction
+
+Claude loads the **context-building** skill in **call recording capture mode**.
+
+**Claude analyzes the transcript:**
+
+> I've analyzed the call transcript with Sarah from PropertyFlow. Here are the signals I extracted:
+
+#### ICP Signals
+
+| Signal Type | Details |
+|------------|----------|
+| **Company** | PropertyFlow — property management software |
+| **Contact** | Sarah, Head of Product |
+| **Company profile** | Product team, building tenant screening features |
+| **Size** | Likely 20-100 employees (product-led, engineering team) |
+| **Geography** | Not mentioned — assume US-based |
+| **Buying persona** | Product leader evaluating API integrations |
+
+**ICP insight:**
+
+> PropertyFlow fits a new ICP profile: **Property tech platforms building tenant/vendor evaluation features**. Similar to procurement/scoring use cases, but focused on SMB tenants in commercial real estate.
+
+#### Win Case Data (Potential)
+
+| Field | Value |
+|-------|-------|
+| **Customer** | PropertyFlow (in evaluation, not yet won) |
+| **Profile** | Property tech, tenant screening |
+| **Pain trigger** | Manual tenant evaluation (20-30 min per lookup, 50+/mo volume) |
+| **Current workflow** | Google + LinkedIn + Yelp — unreliable, time-consuming |
+| **What resonated** | (1) SMB coverage, (2) Free search tier, (3) API-first vs manual |
+| **Objections addressed** | Clearbit = poor SMB coverage + per-contact pricing model mismatch |
+| **Deal stage** | Evaluation (requested API sandbox) |
+| **Close date** | TBD |
+
+#### Proof Point Candidates
+
+From the call, these could become proof library entries *if PropertyFlow closes*:
+
+1. **Tenant screening time savings**  
+   "A property tech platform cut tenant evaluation time from 20 minutes to under 30 seconds using Extruct's search API."
+   
+2. **SMB coverage advantage**  
+   "PropertyFlow chose Extruct for tenant screening because our SMB coverage exceeded traditional data providers by 3x."
+   
+3. **Free tier unlock**  
+   "PropertyFlow uses Extruct's free search tier for unlimited tenant lookups, only paying for enrichment when they need deeper research."
+
+*(Note: Don't add these to Proof Library yet — wait until deal closes)*
+
+#### Hypothesis Validation
+
+This call validates and extends existing hypotheses:
+
+**Existing hypothesis confirmed:**
+- **#1 B2B Scoring Workflows** — PropertyFlow is scoring/evaluating tenants (businesses). This is the same pattern as vendor scoring, lead scoring, partner verification.
+
+**New hypothesis angle to add:**
+- **SMB Data Gap** — Prospect explicitly called out that Clearbit/ZoomInfo focus on larger companies and miss SMBs. This is a distinct pain point.
+
+**Validated messaging:**
+- "API-first" resonated (vs building scrapers)
+- "Free search tier" was a strong differentiator
+- "Coverage for SMBs" was the #1 decision factor
+
+#### DNC Signals
+
+None identified in this call.
+
+#### Voice Feedback
+
+From the call, Sarah's language preferences:
+
+- She used technical terms ("programmatic", "API", "structured profile") — B2B technical tone is appropriate
+- She appreciated directness ("What does manually mean?" — no fluff)
+- Pricing clarity was important ("What's the pricing model?" asked directly)
+
+**Voice rule to reinforce:** Stay technical, concise, and transparent on pricing.
+
+---
+
+**Do you want me to update the context file with these signals?**
+
+### Step 2: User Confirmation
+
+**You respond:**
+
+```
+Yes, update the context file. Add:
+1. PropertyFlow as a "potential win case" (in evaluation)
+2. New ICP profile for property tech
+3. Add "SMB Data Gap" as a new hypothesis
+4. Add the messaging validation notes to the hypothesis section
+
+Don't add proof points yet — we'll add those if they close.
+```
+
+### Step 3: Context File Update
+
+Claude updates the context file:
+
+**Read existing context:**
+
+```bash
+cat claude-code-gtm/context/extruct_context.md
+```
+
+**Append new sections:**
+
+#### Updated ICP Section
+
+```markdown
+## ICP
+
+### Primary profiles
+
+| Profile | Company size | Roles | Geographies | Why they buy |
+|---------|-------------|-------|-------------|-------------|
+| Sales/Marketing Intelligence | 50-500 | Head of Sales, Ops | US, UK, EU | Lead enrichment, scoring |
+| Procurement Platforms | 20-200 | Head of Product, Eng | US, UK | Vendor scoring, supplier intel |
+| **Property Tech Platforms** | **20-200** | **Head of Product, Eng** | **US** | **Tenant/vendor screening, business verification** |
+| Fintech/Risk | 50-500 | Head of Risk, Compliance | US, UK | Credit risk, KYB verification |
+| Marketplaces | 50-300 | Head of Product, Ops | Global | Partner verification, matching |
+```
+
+*(New row added for Property Tech)*
+
+#### Updated Win Cases Section
+
+```markdown
+## Win Cases
+
+| Customer | Profile | What worked | Result | Date |
+|----------|---------|------------|--------|------|
+| SupplierIQ | Procurement | Free search tier + SMB coverage | Auto-scoring for 500+ vendors/mo | 2025-01 |
+| [... existing win cases ...] |
+| **PropertyFlow** | **Property tech, tenant screening** | **SMB coverage, free search, API-first** | **Evaluation stage (sandbox)** | **2025-03** |
+
+### Quotes / signals from wins
+
+- "We tried building scrapers — spent 3 weeks, it kept breaking. Not our core competency." — PropertyFlow (Sarah, Head of Product)
+- "Clearbit's coverage is mostly tech companies and larger businesses — we need smaller, local businesses too." — PropertyFlow
+- "The fact that you have SMB coverage and free search is already way ahead of the other options we've looked at." — PropertyFlow
+```
+
+#### Updated Active Hypotheses Section
+
+```markdown
+## Active Hypotheses
+
+### Validated (reply rate > 10%)
+
+1. **B2B Scoring Workflows** — Companies building features to score, evaluate, or rank businesses (vendors, leads, tenants, partners). Pain: manual lookups (20-30 min each), unreliable data from Google/LinkedIn. **Validated by:** SupplierIQ, PropertyFlow eval. Best fit: Procurement, sales tools, property tech, marketplaces.
+
+### Testing
+
+2. **Enrichment at Scale** — Sales/marketing tools enriching leads or CRM records. High volume, need API reliability. Best fit: Sales intelligence, CRM enrichment.
+
+3. **Risk & Compliance Screening** — Fintech platforms screening counterparties or assessing credit risk. Best fit: Fintech, lending, payments.
+
+4. **Discovery & Matching** — Platforms helping users discover/match relevant companies. Best fit: Marketplaces, VC platforms, recruiting.
+
+5. **SMB Data Gap** *(NEW)* — Products serving customers who need data on small/local businesses, not just large tech companies. Pain: Traditional data providers (Clearbit, ZoomInfo) have poor SMB coverage. **Validated by:** PropertyFlow eval (explicitly cited as Clearbit's weakness). Best fit: Property tech, local business directories, SMB-focused fintech, franchise platforms.
+
+### Messaging Validation (from PropertyFlow call)
+
+- ✅ "API-first" vs building scrapers — resonates with product/eng personas
+- ✅ "Free search tier" — strong differentiator, removes evaluation friction
+- ✅ "SMB coverage" — critical for property tech, procurement, local business use cases
+- ✅ Technical, concise tone — appreciated by product leaders
+- ✅ Transparent pricing — asked directly, no hesitation on our side
+```
+
+**Claude saves the updated context file.**
+
+### Step 4: Hypothesis Set Update
+
+Claude also updates the hypothesis set file to include the new "SMB Data Gap" hypothesis.
+
+**Read existing hypothesis set:**
+
+```bash
+cat claude-code-gtm/context/property-tech/hypothesis_set.md
+```
+
+**Append new hypothesis:**
+
+```markdown
+### #5 SMB Data Gap
+
+Products serving customers who need company data on small and local businesses, 
+not just large tech companies or enterprises. Traditional providers like Clearbit 
+and ZoomInfo focus on 500+ employee companies and miss SMBs (10-100 employees). 
+This creates a data gap for:
+- Property tech platforms screening small business tenants
+- Procurement platforms evaluating local suppliers
+- Franchise platforms verifying franchisee businesses
+- Local business directories or review platforms
+
+Best fit: Property tech, procurement (local suppliers), SMB fintech, franchise 
+platforms, local business SaaS.
+
+Search angle: "property tech tenant screening", "local business verification software", 
+"franchise management platforms", "SMB-focused B2B data"
+```
+
+**Saved to:**
+
+```
+claude-code-gtm/context/property-tech/hypothesis_set.md
+```
+
+### Step 5: Next Actions Suggestion
+
+Claude suggests follow-up actions:
+
+> **Signals captured and context updated.** Here's what I recommend next:
+>
+> 1. **Follow up with PropertyFlow** — send API docs + sandbox key (you mentioned this on the call)
+> 2. **Test "SMB Data Gap" hypothesis** — run a list-building search for SMB-focused use cases:
+>    - Franchise platforms
+>    - Local business SaaS
+>    - SMB fintech
+> 3. **Email prompt update** — add "SMB coverage" as a value prop angle to your property tech email templates
+> 4. **Proof points** — if PropertyFlow closes, add the proof point candidates to your Proof Library
+> 5. **Campaign feedback loop** — if you have an active property tech campaign, review if "SMB coverage" messaging should be emphasized
+>
+> Want me to run any of these actions now?
+
+**You respond:**
+
+```
+Yes, run a list-building search for SMB-focused platforms.
+Let's test the "SMB Data Gap" hypothesis.
+```
+
+### Step 6: Hypothesis-Driven List Building
+
+Claude uses **list-building** skill to test the new hypothesis.
+
+**Search queries (from hypothesis search angle):**
+
+```bash
+# Query 1: Franchise platforms
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "franchise management platforms and software for franchise operations",
+    "filters": {"include": {"employee_count": ["11-50", "51-200"]}},
+    "limit": 100
+  }'
+
+# Query 2: Local business verification
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "local business verification and data platforms for SMB intelligence",
+    "limit": 100
+  }'
+
+# Query 3: SMB fintech
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "fintech and lending platforms focused on small business credit and verification",
+    "limit": 100
+  }'
+```
+
+**Results:**
+
+> Found 267 unique companies across 3 queries.
+>
+> Created table: `tbl_smb_data_gap_hypothesis`
+> View at: https://app.extruct.ai/tables/tbl_smb_data_gap_hypothesis
+
+**Claude saves:**
+
+```
+claude-code-gtm/csv/input/smb-data-gap-test/companies.csv
+```
+
+> **Next:** Run enrichment to validate which companies actually face the SMB data gap, 
+> then build a targeted campaign for Tier 1 companies.
+
+</Steps>
+
+## Final Artifacts
+
+**Updated context file:**
+
+```
+claude-code-gtm/context/extruct_context.md
+```
+
+Changes:
+- Added "Property Tech Platforms" ICP profile
+- Added PropertyFlow as potential win case with quotes
+- Added "SMB Data Gap" hypothesis to Active Hypotheses
+- Added messaging validation notes
+
+**Updated hypothesis set:**
+
+```
+claude-code-gtm/context/property-tech/hypothesis_set.md
+```
+
+Changes:
+- Added Hypothesis #5: SMB Data Gap
+
+**New list for testing:**
+
+```
+claude-code-gtm/csv/input/smb-data-gap-test/companies.csv
+```
+
+267 companies to test the new hypothesis
+
+## Key Takeaways
+
+Call recording capture mode is valuable for:
+
+1. **ICP refinement** — Discover new profiles (property tech) from real conversations
+2. **Hypothesis validation** — Confirm which pain points resonate in discovery calls
+3. **Proof point sourcing** — Capture quotes and metrics for future proof library entries
+4. **Messaging optimization** — Learn what language and positioning works ("SMB coverage", "free tier")
+5. **Continuous learning** — Every call improves your context file and campaign targeting
+
+## Workflow Frequency
+
+Run call recording capture after:
+
+- Every demo or discovery call (during sales)
+- Closed-won deals (capture full win case)
+- Customer onboarding calls (learn actual use cases)
+- Lost deals (capture objections and anti-patterns)
+
+This creates a **feedback loop** where your outbound campaigns get smarter with every conversation.

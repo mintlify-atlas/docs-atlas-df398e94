@@ -1,0 +1,312 @@
+---
+title: 'Environment Setup'
+description: 'Configure API credentials and environment variables for GTM Skills'
+---
+
+# Environment Setup
+
+GTM Skills integrates with multiple APIs. This guide shows you how to set up credentials and manage environment variables.
+
+## Required: Extruct API Token
+
+The Extruct API token is the only credential you must set upfront. All other provider credentials are requested in-chat when the corresponding skill runs.
+
+### Get Your Token
+
+1. Sign up at [extruct.ai](https://www.extruct.ai)
+2. Navigate to Settings → API Keys
+3. Generate a new API token
+4. Copy the token (starts with `ext_`)
+
+### Set the Token
+
+**Option A: Export in your shell**
+
+```bash
+export EXTRUCT_API_TOKEN=ext_your_token_here
+```
+
+Add to your `~/.bashrc`, `~/.zshrc`, or equivalent to persist across sessions.
+
+**Option B: Add to Claude Code environment**
+
+If using Claude Code, add to your project's environment file:
+
+```bash
+echo "EXTRUCT_API_TOKEN=ext_your_token_here" >> .env
+```
+
+### Verify
+
+```bash
+test -n "$EXTRUCT_API_TOKEN" && echo "Extruct token set" || echo "Extruct token missing"
+```
+
+You should see: `Extruct token set`
+
+## Optional: Contact Enrichment Providers
+
+These are requested when you run the `email-search` skill. You can set them upfront or provide them in-chat.
+
+### Prospeo
+
+**Use case**: LinkedIn → verified email enrichment
+
+1. Sign up at [prospeo.io](https://prospeo.io)
+2. Get API key from dashboard
+3. Set token:
+   ```bash
+   export PROSPEO_API_KEY=your_key_here
+   ```
+
+**Pricing**: Pay-per-match, typically $0.10-0.20 per verified email
+
+### Fullenrich
+
+**Use case**: Waterfall enrichment (multiple data sources)
+
+1. Sign up at [fullenrich.com](https://fullenrich.com)
+2. Get API key from dashboard
+3. Set token:
+   ```bash
+   export FULLENRICH_API_KEY=your_key_here
+   ```
+
+**Pricing**: Credit-based, ~1-2 credits per enrichment
+
+## Optional: Email Sequencing Providers
+
+These are requested when you run the `campaign-sending` skill.
+
+### Instantly
+
+**Use case**: Email sequencing and sending
+
+1. Sign up at [instantly.ai](https://instantly.ai)
+2. Navigate to Settings → Integrations → API
+3. Generate API key
+4. Set token:
+   ```bash
+   export INSTANTLY_API_KEY=your_key_here
+   ```
+
+**What you need**:
+- API key
+- Workspace ID (found in URL: `app.instantly.ai/app/{workspace_id}`)
+- At least 1 email account connected and warmed
+
+### Smartlead
+
+**Use case**: Alternative to Instantly
+
+1. Sign up at [smartlead.ai](https://smartlead.ai)
+2. Get API key from Settings
+3. Set token:
+   ```bash
+   export SMARTLEAD_API_KEY=your_key_here
+   ```
+
+### Lemlist
+
+**Use case**: Alternative to Instantly
+
+1. Sign up at [lemlist.com](https://lemlist.com)
+2. Get API key from Settings → Integrations
+3. Set token:
+   ```bash
+   export LEMLIST_API_KEY=your_key_here
+   ```
+
+## Environment Variables Summary
+
+| Variable | Service | Used By | Required? |
+|----------|---------|---------|----------|
+| `EXTRUCT_API_TOKEN` | [Extruct API](https://www.extruct.ai/docs) | list-building, list-enrichment, table-creation, people-search, list-segmentation, email-search | **Yes** |
+| `PROSPEO_API_KEY` | [Prospeo](https://prospeo.io) | email-search | No (requested in-chat) |
+| `FULLENRICH_API_KEY` | [Fullenrich](https://fullenrich.com) | email-search | No (requested in-chat) |
+| `INSTANTLY_API_KEY` | [Instantly](https://instantly.ai) | campaign-sending | No (requested in-chat) |
+| `SMARTLEAD_API_KEY` | [Smartlead](https://smartlead.ai) | campaign-sending | No (requested in-chat) |
+| `LEMLIST_API_KEY` | [Lemlist](https://lemlist.com) | campaign-sending | No (requested in-chat) |
+
+## Multi-Provider Strategy
+
+### Email Enrichment: Waterfall
+
+For maximum hit rate, use multiple providers in sequence:
+
+1. Run Prospeo first (fast, good LinkedIn coverage)
+2. Collect misses (contacts with no email found)
+3. Run Fullenrich on misses (waterfall, slower but broader coverage)
+
+Typical results:
+- Prospeo alone: 60-70% hit rate
+- Prospeo + Fullenrich waterfall: 75-85% hit rate
+
+### Email Sequencing: Test Before Committing
+
+Instantly, Smartlead, and Lemlist have similar features. Pick based on:
+
+| Factor | Instantly | Smartlead | Lemlist |
+|--------|-----------|-----------|----------|
+| **Pricing** | Per send ($) | Per lead ($$) | Per send ($) |
+| **Warmup** | Built-in | Built-in | Built-in |
+| **API** | Well-documented | Good | Basic |
+| **Deliverability** | High | High | Medium |
+
+Run a 50-contact test campaign on each before scaling.
+
+## Credential Security
+
+<Warning>
+  Never commit API keys to version control. Use environment variables or secret managers.
+</Warning>
+
+### Best Practices
+
+1. **Use environment variables**, not hardcoded keys
+2. **Rotate keys quarterly** or after team member changes
+3. **Scope permissions** - create API keys with minimal required access
+4. **Monitor usage** - set up billing alerts on provider dashboards
+
+### .env File Template
+
+Create a `.env` file in your project root:
+
+```bash
+# Extruct (required)
+EXTRUCT_API_TOKEN=ext_your_token_here
+
+# Contact Enrichment (optional, requested in-chat)
+PROSPEO_API_KEY=your_prospeo_key
+FULLENRICH_API_KEY=your_fullenrich_key
+
+# Email Sequencing (optional, requested in-chat)
+INSTANTLY_API_KEY=your_instantly_key
+# SMARTLEAD_API_KEY=your_smartlead_key
+# LEMLIST_API_KEY=your_lemlist_key
+```
+
+Add `.env` to `.gitignore`:
+
+```bash
+echo ".env" >> .gitignore
+```
+
+## Loading Environment Variables
+
+### In Shell Sessions
+
+```bash
+source .env
+```
+
+### In Claude Code
+
+Claude Code auto-loads `.env` files in your project root.
+
+### Verify All Variables
+
+```bash
+env | grep -E '(EXTRUCT|PROSPEO|FULLENRICH|INSTANTLY|SMARTLEAD|LEMLIST)'
+```
+
+## API Rate Limits
+
+### Extruct
+
+- **Search API**: Unlimited requests, free
+- **Discovery API**: 1 task at a time, 250 results max per task
+- **Enrichment API**: 50 concurrent cells, 1 credit per cell
+- **People Finder**: 2 credits per person found
+
+**Tip**: For large enrichments (1000+ cells), Extruct auto-throttles. Expect 5-10 min for 200 companies × 3 columns.
+
+### Prospeo
+
+- **Email Finder**: 60 requests/min
+- **Bulk Enrichment**: 100 contacts/batch, 10 batches/min
+
+**Tip**: For 500 contacts, expect 5-10 minutes.
+
+### Instantly
+
+- **API**: 100 requests/min
+- **Lead Upload**: 1000 leads/batch
+
+**Tip**: For 1000 leads, upload takes 1-2 minutes.
+
+## Cost Estimation
+
+### Example Campaign: 300 Companies
+
+| Step | Service | Cost |
+|------|---------|------|
+| **List Building** | Extruct Search | Free |
+| **Enrichment** (3 columns) | Extruct (300 × 3 = 900 credits) | $53 (at $59/1K credits) |
+| **People Search** (3 per company) | Extruct (900 × 2 = 1800 credits) | $106 |
+| **Email Enrichment** (900 contacts) | Prospeo (900 × $0.15) | $135 |
+| **Email Sequencing** (800 sends) | Instantly (800 × $0.10) | $80 |
+| **Total** | | **$374** |
+
+**Breakdown**:
+- Extruct: $159 (2700 credits)
+- Prospeo: $135 (900 contacts)
+- Instantly: $80 (800 sends)
+
+### First Campaign (Smaller)
+
+For your first campaign, run 100 companies to test:
+
+| Step | Service | Cost |
+|------|---------|------|
+| **List Building** | Extruct Search | Free |
+| **Enrichment** (3 columns) | Extruct (300 credits) | $18 |
+| **People Search** (2 per company) | Extruct (200 × 2 = 400 credits) | $24 |
+| **Email Enrichment** (200 contacts) | Prospeo (200 × $0.15) | $30 |
+| **Email Sequencing** (150 sends) | Instantly (150 × $0.10) | $15 |
+| **Total** | | **$87** |
+
+Extruct's free trial (100 credits) covers list enrichment. You'll pay for people search, email enrichment, and sending.
+
+## Monitoring Usage
+
+### Extruct Dashboard
+
+- Navigate to [extruct.ai/dashboard](https://www.extruct.ai/dashboard)
+- View credit usage by table and column
+- Set billing alerts
+
+### Prospeo Dashboard
+
+- Check credit balance at [prospeo.io/dashboard](https://prospeo.io)
+- Export usage logs
+
+### Instantly Dashboard
+
+- Navigate to [instantly.ai](https://instantly.ai)
+- View campaign stats and sending usage
+
+## Troubleshooting
+
+**Error: `EXTRUCT_API_TOKEN` not set**
+- Run: `export EXTRUCT_API_TOKEN=your_token`
+- Verify: `echo $EXTRUCT_API_TOKEN`
+
+**Error: Invalid Extruct token**
+- Check token format (starts with `ext_`)
+- Regenerate token in Extruct dashboard
+- Verify no extra whitespace: `echo "$EXTRUCT_API_TOKEN" | wc -c`
+
+**Error: Prospeo rate limit**
+- Reduce batch size from 100 to 50
+- Add delay between batches (2-3 seconds)
+
+**Error: Instantly authentication failed**
+- Verify API key + workspace ID
+- Check API key permissions (needs campaign write access)
+
+## Next Steps
+
+- [Your First Campaign](/guides/first-campaign) - Use your configured credentials
+- [Managing Multiple Verticals](/guides/multi-vertical) - Scale across segments
+- [Feedback Loops](/guides/feedback-loops) - Import results from sequencers

@@ -1,0 +1,264 @@
+---
+title: "List Segmentation"
+description: "Segment and tier companies by hypothesis fit to prioritize outreach and assign personalization levels"
+---
+
+## Overview
+
+Take an enriched Extruct table and a hypothesis set, then segment companies by hypothesis fit and assign tiers based on data richness and signal strength. Outputs a tiered, segmented list ready for email generation.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Segment companies by hypothesis fit
+- Tier companies for prioritization
+- Prioritize your list for outreach
+- Determine which companies get personalized emails
+- Decide messaging order and depth
+
+**Trigger phrases:** "segment", "tier", "segment companies", "tier companies", "prioritize list", "segment and tier", "tiering", "which companies first"
+
+## Inputs
+
+<ParamField path="enriched_table" type="string" required>
+  Extruct table ID from the `list-enrichment` skill containing company data with enrichment columns
+</ParamField>
+
+<ParamField path="hypothesis_set" type="string" required>
+  Path to hypothesis set file: `claude-code-gtm/context/{vertical-slug}/hypothesis_set.md`
+</ParamField>
+
+<ParamField path="context_file" type="string">
+  Company context file: `claude-code-gtm/context/{company}_context.md` (recommended for better segmentation)
+</ParamField>
+
+## Environment Setup
+
+<Steps>
+  <Step title="Verify API Token">
+    The skill checks for `EXTRUCT_API_TOKEN` environment variable. If missing, you'll be prompted to provide your Extruct API token.
+    
+    ```bash
+    export EXTRUCT_API_TOKEN=<your-token>
+    ```
+  </Step>
+  
+  <Step title="API Configuration">
+    Base URL: `https://api.extruct.ai/v1`
+    
+    Authentication uses Bearer token in headers.
+  </Step>
+</Steps>
+
+## Workflow
+
+<Steps>
+  <Step title="Load Data">
+    Fetch enriched table data via `GET /tables/{table_id}/data` and parse all rows with their enrichment column values.
+    
+    Read the hypothesis set file and parse each hypothesis into:
+    - Number and short name
+    - Description with data points
+    - Best-fit company type
+  </Step>
+  
+  <Step title="Match Companies to Hypotheses">
+    For each company row, evaluate which hypothesis fits best by considering:
+    
+    1. **Enrichment data alignment** — Do the enrichment column values match the hypothesis's "best fit" description?
+    2. **Signal strength** — How many enrichment columns have useful data (not N/A)?
+    3. **Specificity** — Does the company's profile match the hypothesis narrowly or broadly?
+    
+    Assign each company ONE primary hypothesis. If multiple fit, pick the strongest signal.
+    
+    <Accordion title="Decision Framework">
+      ```
+      For each company:
+        1. Read all enrichment values
+        2. For each hypothesis:
+           - Does the company's vertical/industry match the "best fit"?
+           - Do enrichment values confirm the hypothesis pain point?
+           - Is there a specific data point that makes this hypothesis resonate?
+        3. Pick the hypothesis with the strongest evidence
+        4. If no hypothesis fits well, mark as "Unmatched"
+      ```
+    </Accordion>
+  </Step>
+  
+  <Step title="Assign Tiers">
+    Three tiers based on fit strength and data richness:
+    
+    | Tier | Criteria | Action |
+    |------|----------|--------|
+    | **Tier 1** | Strong hypothesis fit + data-rich (3+ enrichment fields populated) + clear hook signal | Personalized email via `email-response-simulation` review |
+    | **Tier 2** | Medium hypothesis fit OR data-rich but no clear hook | Standard templated email via `email-generation` |
+    | **Tier 3** | Weak fit OR missing data (2+ fields N/A) OR unmatched hypothesis | Hold for re-enrichment or different campaign |
+    
+    <Accordion title="Tier 1 Signals (any of these)">
+      - CEO/leadership made a public statement related to the hypothesis
+      - Recent news directly relevant to the pain point
+      - Hiring for roles that signal the hypothesis pain
+      - High hypothesis fit score from enrichment (grade 4-5)
+    </Accordion>
+    
+    <Accordion title="Tier 3 Signals (any of these)">
+      - Most enrichment fields returned N/A
+      - No hypothesis match above threshold
+      - Company profile too generic to confidently segment
+    </Accordion>
+  </Step>
+  
+  <Step title="Generate Output">
+    Output a segmented list in two formats:
+    
+    **Markdown table (for review):**
+    
+    ```markdown
+    ## Segmented List: [Campaign Name]
+    
+    ### Tier 1 — [N] companies (personalized outreach)
+    
+    | Company | Domain | Hypothesis | Tier Rationale | Hook Signal |
+    |---------|--------|-----------|----------------|-------------|
+    | [name] | [domain] | #[N] [name] | [why this tier] | [specific hook] |
+    
+    ### Tier 2 — [N] companies (templated outreach)
+    ...
+    
+    ### Tier 3 — [N] companies (hold/re-enrich)
+    ...
+    ```
+    
+    **CSV (for email-generation):**
+    
+    Saved to `claude-code-gtm/csv/input/{campaign-slug}/segmented_list.csv` with columns:
+    - `company_name`, `domain`, `tier`, `hypothesis_number`, `hypothesis_name`, `tier_rationale`, `hook_signal`
+  </Step>
+  
+  <Step title="Review with User">
+    Present summary stats:
+    - Total companies: N
+    - Tier 1: N (X%)
+    - Tier 2: N (X%)
+    - Tier 3: N (X%)
+    - Unmatched: N
+    
+    Review questions:
+    - "Does the tier distribution look right? (Typical: 10-20% Tier 1, 50-60% Tier 2, 20-30% Tier 3)"
+    - "Any companies that should move tiers?"
+    - "Ready to proceed to `email-generation`?"
+  </Step>
+</Steps>
+
+## Tiering Framework
+
+### Scoring Formula
+
+<Info>
+Optional numeric scoring for systematic tier assignment:
+
+```
+tier_score = (hypothesis_fit * 0.4) + (data_richness * 0.3) + (hook_available * 0.3)
+
+Where:
+- hypothesis_fit: 0-5 (from grade column or manual assessment)
+- data_richness: 0-5 (count of populated fields / total fields * 5)
+- hook_available: 0 (no hook), 3 (generic hook), 5 (specific hook)
+
+Tier 1: score >= 3.5
+Tier 2: score >= 2.0
+Tier 3: score < 2.0
+```
+</Info>
+
+### Tier Decision Matrix
+
+| Signal | Tier 1 | Tier 2 | Tier 3 |
+|--------|--------|--------|--------|
+| Hypothesis fit score | 4-5 | 2-3 | 1 or N/A |
+| Enrichment fields populated | 4+ of 5 | 2-3 of 5 | 0-1 of 5 |
+| Hook signal available | Yes (specific) | Generic only | None |
+| Company profile depth | Rich description + recent data | Basic description | Minimal or stale |
+| Vertical match | Exact | Adjacent | No match |
+
+## Output Actions by Tier
+
+<Accordion title="Tier 1: Full Personalization Pipeline">
+  **Expected volume:** 10-20% of list (20-50 companies)
+  
+  **Email quality:** Highly personalized P1 with specific hook
+  
+  **Process:**
+  1. Run through `email-generation` with hypothesis + hook signal
+  2. Review each email via `email-response-simulation` (persona research)
+  3. Iterate until satisfied
+  4. Upload to sequencer in a separate, high-touch campaign
+</Accordion>
+
+<Accordion title="Tier 2: Templated with Hypothesis Variation">
+  **Expected volume:** 50-60% of list (100-300 companies)
+  
+  **Email quality:** Hypothesis-personalized but not individually researched
+  
+  **Process:**
+  1. Run through `email-generation` with hypothesis only (no individual hooks)
+  2. Group by hypothesis — each group gets a slightly different P1
+  3. Spot-check 5-10 emails for quality
+  4. Upload to sequencer in main campaign
+</Accordion>
+
+<Accordion title="Tier 3: Hold or Re-Process">
+  **Expected volume:** 20-30% of list
+  
+  **Email quality:** Do not email until upgraded to Tier 2+
+  
+  **Options:**
+  1. **Re-enrich:** Run additional enrichment columns to fill gaps
+  2. **Different campaign:** Save for a broader, less-targeted campaign
+  3. **Drop:** If the company truly doesn't fit any hypothesis
+</Accordion>
+
+## Troubleshooting Tier Distribution
+
+<Warning>
+| Issue | Fix |
+|-------|-----|
+| 80%+ in Tier 3 | Hypotheses don't match the list — re-run `market-research` or rebuild the list |
+| 50%+ in Tier 1 | Tiering too lenient — tighten the hook signal requirement |
+| 0% in Tier 1 | No personalization columns — run `enrichment-design` in personalization mode |
+| Even split across all 3 | Usually correct — proceed |
+</Warning>
+
+## API Reference
+
+### Fetch Table Data
+
+```http
+GET /tables/{table_id}/data
+Authorization: Bearer {EXTRUCT_API_TOKEN}
+```
+
+**Response:**
+```json
+{
+  "rows": [
+    {
+      "id": "row-uuid",
+      "cells": {
+        "company_name": "Acme Corp",
+        "domain": "acme.com",
+        "enrichment_column_1": "value",
+        "enrichment_column_2": "value"
+      }
+    }
+  ]
+}
+```
+
+## Next Steps
+
+After segmentation is complete:
+
+1. **Tier 1 companies** → `people-search` → `email-search` → `email-generation` → `email-response-simulation`
+2. **Tier 2 companies** → `people-search` → `email-search` → `email-generation`
+3. **Tier 3 companies** → Hold or re-run `list-enrichment`

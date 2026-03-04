@@ -1,0 +1,289 @@
+---
+title: "People Search"
+description: "Find LinkedIn profiles of decision makers at target companies using Extruct's company_people_finder"
+---
+
+## Overview
+
+Find LinkedIn profiles of decision makers at target companies using Extruct's `company_people_finder`. Takes a company table, adds a people finder column, and produces a linked child people table with names, roles, and LinkedIn URLs. No external API credits — uses Extruct's index only.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Find LinkedIn profiles for target companies
+- Identify decision makers and contacts
+- Build a people list for email enrichment
+- Discover who to contact at each company
+
+**Trigger phrases:** "find linkedin", "find people", "find contacts", "find decision makers", "people search", "linkedin search", "who to contact", "find profiles"
+
+## Related Skills
+
+```
+list-segmentation → people-search → email-search → email-generation → email-response-simulation → campaign-sending
+```
+
+After you know WHICH companies to target, this skill finds WHO to contact. The next step (`email-search`) gets their verified emails and phones.
+
+## Environment Setup
+
+<ParamField path="EXTRUCT_API_TOKEN" type="string" required>
+  Extruct API token for authentication. Set via:
+  ```bash
+  export EXTRUCT_API_TOKEN=<your-token>
+  ```
+</ParamField>
+
+**Base URL:** `https://api.extruct.ai/v1`
+
+## Inputs
+
+<ParamField path="table_id" type="string" required>
+  Extruct table ID from `list-building` or `list-enrichment` containing company data
+</ParamField>
+
+<ParamField path="target_roles" type="array" required>
+  List of broad role descriptions to search for. Use 3-7 roles for best results.
+  
+  Examples:
+  - `["VP Sales", "Head of Sales", "Revenue Operations"]`
+  - `["CTO", "VP Engineering", "Head of Data"]`
+</ParamField>
+
+<ParamField path="max_results" type="number" default="5">
+  Maximum number of people to find per company. Recommended: 3-5 (more = slower + noisier)
+</ParamField>
+
+## Workflow
+
+<Steps>
+  <Step title="Verify API Reference">
+    The skill automatically:
+    1. Reads local reference: `references/api_reference.md`
+    2. Fetches live docs: https://www.extruct.ai/docs
+    3. Compares endpoints, params, and response fields
+    4. Updates local reference if discrepancies found
+    5. Flags changes to you before proceeding
+  </Step>
+  
+  <Step title="Confirm the Table">
+    Fetches table metadata via `GET /tables/{table_id}` and shows:
+    - Table name
+    - Table kind
+    - Row count
+  </Step>
+  
+  <Step title="Define Roles">
+    You'll be asked: "Who are we trying to reach at these companies?"
+    
+    The skill expands your input into a role list using **broad role descriptions**, not exact titles.
+    
+    <Info>
+      **Role list guidelines:**
+      - 3-7 roles is the sweet spot
+      - Use broad terms: "VP Sales" not "Vice President of Enterprise Sales"
+      - Cover the decision maker + influencer + champion if possible
+      - Include department variations
+    </Info>
+    
+    <Accordion title="Role Expansion Examples">
+      ```
+      You say: "Sales and ops leaders"
+      → Roles: ["VP Sales", "Head of Sales", "Sales Operations", "RevOps", "Business Development", "CRO"]
+      
+      You say: "People who buy data tools"
+      → Roles: ["Revenue Operations", "Sales Operations", "Data Operations", "Business Intelligence", "CRM Admin"]
+      
+      You say: "Innovation and strategy at corporates"
+      → Roles: ["Head of Innovation", "VP Strategy", "Corporate Development", "Ventures", "Technology Scouting"]
+      ```
+    </Accordion>
+    
+    The skill can also read role targets from your ICP in the context file:
+    ```
+    claude-code-gtm/context/{company}_context.md → ## ICP → Roles column
+    ```
+  </Step>
+  
+  <Step title="Add company_people_finder Column">
+    Creates a `company_people_finder` column via `POST /tables/{table_id}/columns`.
+    
+    **Column configuration:**
+    ```json
+    {
+      "kind": "company_people_finder",
+      "name": "Key Decision Makers",
+      "key": "decision_makers",
+      "value": {
+        "roles": ["VP Sales", "Head of Sales", "Revenue Operations"],
+        "provider": "research_pro",
+        "max_results": 5
+      }
+    }
+    ```
+    
+    | Parameter | Description | Recommended |
+    |-----------|-------------|-------------|
+    | `roles` | Broad role descriptions to search for | 3-7 roles |
+    | `provider` | Search provider | `research_pro` (always) |
+    | `max_results` | Max people per company | 3-5 |
+  </Step>
+  
+  <Step title="Trigger Enrichment Run">
+    Runs the new column via `POST /tables/{table_id}/run` scoped to the new column ID.
+    
+    Reports: run ID and cells queued.
+  </Step>
+  
+  <Step title="Monitor and Discover Child Table">
+    The `company_people_finder` column auto-creates a **child people table**.
+    
+    The skill fetches parent table metadata and looks for `child_relationships` with `relationship_type: "company_people"` to get the people table ID.
+    
+    <Info>
+      **Auto-created people table columns:**
+      
+      | Column | Key | Kind | Description |
+      |--------|-----|------|-------------|
+      | Person Input | `input` | input | Raw person context string |
+      | Full Name | `full_name` | agent | Parsed full name |
+      | Role | `role` | agent | Current role/title |
+      | Profile URL | `profile_url` | agent (url) | LinkedIn URL |
+    </Info>
+  </Step>
+  
+  <Step title="Optionally Add LinkedIn Data Column">
+    For richer profile data (experience, education, skills), add a `linkedin` agent column to the people table:
+    
+    ```json
+    {
+      "kind": "agent",
+      "key": "linkedin_data",
+      "name": "LinkedIn Data",
+      "value": {
+        "agent_type": "linkedin",
+        "prompt": "{profile_url}"
+      }
+    }
+    ```
+    
+    <Note>
+      This is optional — skip if you only need name + role + LinkedIn URL for the `email-search` step.
+    </Note>
+  </Step>
+  
+  <Step title="Fetch and Review People Data">
+    Fetches data from the people table via `GET /tables/{people_table_id}/data`.
+    
+    Extracts: `full_name`, `role`, `profile_url`, and `parent_row_id` from each row.
+    
+    **Summary presented:**
+    - Total companies in table: N
+    - People found: N
+    - Avg people per company: N
+    - Companies with 0 people: N
+    
+    Sample of 10 people shown for spot-checking.
+    
+    **Review questions:**
+    - "Does the role mix look right?"
+    - "Any roles missing? Want to add more?"
+    - "Ready to proceed to `email-search` for verified emails?"
+  </Step>
+  
+  <Step title="Export for email-search">
+    Saves the people list as CSV at:
+    ```
+    claude-code-gtm/csv/input/{campaign}/people_linkedin.csv
+    ```
+    
+    **Columns:** `full_name`, `role`, `profile_url`, `parent_row_id`
+    
+    The `email-search` skill takes this CSV (or reads the people table directly) and enriches with verified emails.
+  </Step>
+</Steps>
+
+## Output
+
+| Output | Format | Location |
+|--------|--------|----------|
+| People table | Extruct child table | Auto-created, linked to parent |
+| People CSV | CSV with name, role, LinkedIn URL | `claude-code-gtm/csv/input/{campaign}/people_linkedin.csv` |
+
+## Key Table IDs to Pass Forward
+
+After this skill completes, pass these to `email-search`:
+- **People table ID** — for direct API access to people data
+- **Parent table ID** — for cross-referencing company data
+- **Campaign slug** — for file paths
+
+## API Reference
+
+### Create People Finder Column
+
+```http
+POST /tables/{table_id}/columns
+Authorization: Bearer {EXTRUCT_API_TOKEN}
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "kind": "company_people_finder",
+  "name": "Key Decision Makers",
+  "key": "decision_makers",
+  "value": {
+    "roles": ["VP Sales", "Head of Sales"],
+    "provider": "research_pro",
+    "max_results": 5
+  }
+}
+```
+
+### Trigger Column Run
+
+```http
+POST /tables/{table_id}/run
+Authorization: Bearer {EXTRUCT_API_TOKEN}
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "column_ids": ["column-uuid"]
+}
+```
+
+### Fetch People Table Data
+
+```http
+GET /tables/{people_table_id}/data
+Authorization: Bearer {EXTRUCT_API_TOKEN}
+```
+
+**Response:**
+```json
+{
+  "rows": [
+    {
+      "id": "row-uuid",
+      "parent_row_id": "parent-row-uuid",
+      "cells": {
+        "full_name": "Jane Doe",
+        "role": "VP of Sales",
+        "profile_url": "https://linkedin.com/in/janedoe"
+      }
+    }
+  ]
+}
+```
+
+## Next Steps
+
+After people search completes:
+
+1. Proceed to `email-search` to get verified emails and phones
+2. Or manually review the people list and refine role filters
+3. Or add more companies to the parent table and re-run

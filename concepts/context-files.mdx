@@ -1,0 +1,447 @@
+---
+title: "Context Files"
+description: "Deep dive on context file structure and usage across skills"
+---
+
+The context file is the single source of truth for all GTM skills. It captures everything about your company, ICP, voice, win cases, and campaign learnings in one Markdown file.
+
+## File Location
+
+```
+claude-code-gtm/context/{company}_context.md
+```
+
+**One file per company.** All skills reference this path. Not per-campaign—global and continuously updated.
+
+<Info>
+Example: If your company is Extruct, the file is `claude-code-gtm/context/extruct_context.md`
+</Info>
+
+---
+
+## File Structure
+
+The context file has 8 main sections:
+
+<AccordionGroup>
+  <Accordion title="What We Do" icon="box">
+    Product description, value proposition, key numbers, and terminology.
+    
+    **Fields:**
+    - **Product:** One-liner description
+    - **Value prop:** Core value proposition (internal version)
+    - **Email-safe value prop:** Outreach-friendly version without banned words
+    - **Key lingo:** Internal terms and definitions
+    - **Key numbers:** Quantifiable claims (database size, speed, coverage)
+    
+    **Usage:** 
+    - Read by `email-prompt-building` for P2 value angles
+    - Email-safe version gets baked into prompt templates
+    - Key numbers used in emails for credibility
+  </Accordion>
+  
+  <Accordion title="Voice" icon="microphone">
+    Sender identity, tone rules, and hard constraints for all outreach.
+    
+    **Fields:**
+    - **Sender:** Name and company (who emails come from)
+    - **Tone:** 1-sentence description (e.g., "Calm, analytical, builder-to-builder")
+    - **Language level:** Complexity guide (e.g., "B2 English: simple, clear sentences")
+    - **Hard constraints:** Numbered list of rules (e.g., "No dashes, no exclamation marks")
+    - **Banned words:** Words that must never appear in outreach
+    - **Scope boundaries:** What the product IS and ISN'T
+    
+    **Usage:**
+    - Read by `email-prompt-building` to set voice rules in templates
+    - Read by `email-response-simulation` to constrain rewrites
+    - Enforced during `email-generation`
+  </Accordion>
+  
+  <Accordion title="ICP" icon="users">
+    Target customer profiles and anti-patterns.
+    
+    **Structure:**
+    ```markdown
+    ### Primary profiles
+    | Profile | Company size | Roles | Geographies | Why they buy |
+    
+    ### Anti-patterns (who is NOT a fit)
+    - [Description of lookalikes that aren't real fits]
+    ```
+    
+    **Usage:**
+    - Read by `hypothesis-building` to shape pain hypotheses
+    - Read by `list-building` for query design and filters
+    - Read by `market-research` to scope research queries
+  </Accordion>
+  
+  <Accordion title="Win Cases" icon="trophy">
+    Past customers, what resonated, concrete outcomes.
+    
+    **Structure:**
+    ```markdown
+    | Customer | Profile | What worked | Result | Date |
+    
+    ### Quotes / signals from wins
+    - "[Direct quote]" — [context]
+    ```
+    
+    **Usage:**
+    - Read by `hypothesis-building` to extract transferable patterns
+    - Read by `list-building` for seed companies in lookalike mode
+    - Source for Proof Library entries (every proof must trace to a win)
+  </Accordion>
+  
+  <Accordion title="Proof Library" icon="bookmark">
+    Pre-written proof point sentences for use in P4 of emails.
+    
+    **Structure:**
+    ```markdown
+    | Proof point | Best for audience | Best for hypothesis | Source win case |
+    | "PS. [Full sentence ready to paste]" | [audience] | [hypothesis] | [win case] |
+    ```
+    
+    **Rules:**
+    - Every proof point must trace back to a real win case
+    - Write as full sentence including "PS."
+    - Map to audience type and hypothesis for conditional selection
+    
+    **Usage:**
+    - Read by `email-prompt-building` to select proof points
+    - Conditionally inserted in emails during `email-generation`
+    - 3-dimensional selection: peer relevance + hypothesis alignment + non-redundancy
+  </Accordion>
+  
+  <Accordion title="Campaign History" icon="clock-rotate-left">
+    Past campaigns with metrics and learnings.
+    
+    **Structure:**
+    ```markdown
+    | Campaign | Vertical | List size | Reply rate | Top hypothesis | Key learning | Date |
+    ```
+    
+    **Usage:**
+    - Updated via `context-building` feedback loop mode
+    - Informs future hypothesis prioritization
+    - Tracks which verticals and angles work
+  </Accordion>
+  
+  <Accordion title="Active Hypotheses" icon="flask">
+    Pain hypotheses organized by validation status.
+    
+    **Structure:**
+    ```markdown
+    ### Validated (reply rate > X%)
+    1. **[Name]** — [description with data]. Best fit: [company type]
+    
+    ### Testing  
+    1. **[Name]** — [description]. Best fit: [company type]
+    
+    ### Retired
+    1. **[Name]** — retired because [reason]. Last tested: [date]
+    ```
+    
+    **Usage:**
+    - Read by `email-prompt-building` for P1 angle selection
+    - Updated based on campaign results (promote/demote/retire)
+    - Target 5-7 active hypotheses
+  </Accordion>
+  
+  <Accordion title="Do Not Contact" icon="ban">
+    Domains to exclude from all lists.
+    
+    **Structure:**
+    ```markdown
+    | Domain | Reason | Added |
+    | example.com | competitor | 2026-03-01 |
+    ```
+    
+    **Reasons:**
+    - Competitor
+    - Partner  
+    - Existing customer
+    - Requested opt-out
+    
+    **Usage:**
+    - Read by `list-building` to filter search results
+    - Read by `campaign-sending` before upload to sequencer
+    - Can auto-populate by running competitor search
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Creating a Context File
+
+Use the [context-building](/skills/context-building) skill:
+
+```bash
+Build a company context file for www.example.com
+```
+
+**The skill will:**
+1. Check if context file exists
+2. If not, read your website to extract product info
+3. Walk you through each section interactively
+4. Write the file using the standard schema
+
+<Tip>
+You can also provide a win case to seed ICP and proof points:
+```bash
+Build context for www.example.com.
+One customer is www.acme.com—they use us for supplier scoring.
+```
+</Tip>
+
+---
+
+## Updating the Context File
+
+The context file evolves as you learn. Four update modes:
+
+### Mode 1: Manual Update
+
+Add new sections or entries:
+
+```bash
+Update context file:
+- Add a new win case: BigCorp, enterprise logistics, 40% faster routing
+- Add to DNC list: competitor1.com, competitor2.com
+```
+
+### Mode 2: Call Recording Capture
+
+Extract signals from sales calls:
+
+```bash
+Update context from this call transcript [attach file]
+```
+
+**Extracted signals:**
+- ICP signals (role, company size, pain points)
+- Win case data (what resonated)
+- Proof point candidates (specific results)
+- Hypothesis validation (confirmed/refuted)
+- Voice feedback (reaction to tone/positioning)
+
+### Mode 3: Campaign Feedback Loop
+
+Import campaign results:
+
+```bash  
+Update context with campaign results from Instantly [attach export]
+```
+
+**Updates:**
+- Adds row to Campaign History table
+- Promotes/demotes hypotheses based on reply rates
+- Adds new proof points from positive replies
+- Updates Proof Library with performance notes
+
+### Mode 4: Hypothesis Refinement
+
+Move hypotheses between Validated/Testing/Retired based on data:
+
+```bash
+Move hypothesis #3 to Validated—12% reply rate in last campaign
+```
+
+<Warning>
+Never overwrite existing entries. Always append new rows to tables, new bullets to lists. The context file is append-only.
+</Warning>
+
+---
+
+## Section Rules and Best Practices
+
+### What We Do
+- Keep under 100 words
+- Update when positioning changes  
+- Always maintain email-safe version (no banned words)
+- Include key numbers for credibility
+
+### Voice  
+- Define sender identity clearly (name + company)
+- Keep tone to 1 sentence
+- Hard constraints should be enforceable ("no dashes" not "be authentic")
+- Update banned words when simulation flags issues
+
+### ICP
+- Max 5 primary profiles
+- Always include anti-patterns (prevents wasted outreach)
+- Be specific on company size ranges ("50-200" not "mid-market")
+
+### Win Cases
+- Add every closed deal (anonymous is fine)
+- Include concrete outcomes with metrics
+- Note what pain triggered the purchase
+
+### Proof Library  
+- Every proof point must map to a real win case
+- Write full PS sentences ("PS. Acme reduced..." not "reduced")
+- Map to audience and hypothesis for conditional selection
+- Test proof points in campaigns before adding
+
+### Campaign History
+- One row per campaign
+- Update reply rate when final numbers are in  
+- Extract 1-sentence learning per campaign
+
+### Active Hypotheses
+- Target 5-7 active hypotheses (3-4 Validated, 2-3 Testing)
+- Move to Retired after 2-3 failed campaigns
+- Promote to Validated after 10%+ reply rate
+
+### Do Not Contact
+- Check before every list build
+- Include competitors, partners, existing customers
+- Consider running Extruct search for competitors to auto-populate
+
+---
+
+## Cross-Skill References
+
+The context file is consumed by:
+
+<CardGroup cols={2}>
+  <Card title="hypothesis-building" icon="flask">
+    Reads: ICP, Win Cases, product value prop
+    
+    Generates pain hypotheses from patterns
+  </Card>
+  <Card title="list-building" icon="list">
+    Reads: ICP, Win Cases, DNC list
+    
+    Uses for query design and seed companies
+  </Card>
+  <Card title="market-research" icon="magnifying-glass-chart">
+    Reads: ICP, hypotheses
+    
+    Scopes research queries
+  </Card>
+  <Card title="enrichment-design" icon="table-cells">
+    Reads: Hypotheses
+    
+    Designs segmentation columns
+  </Card>
+  <Card title="list-segmentation" icon="filter">
+    Reads: Hypotheses  
+    
+    Matches companies to hypotheses for tiering
+  </Card>
+  <Card title="email-prompt-building" icon="file-lines">
+    Reads: Voice, What We Do, Proof Library, Hypotheses
+    
+    Builds self-contained prompt templates
+  </Card>
+  <Card title="email-response-simulation" icon="comments">
+    Reads: Voice rules
+    
+    Constrains rewrites
+  </Card>
+  <Card title="campaign-sending" icon="paper-plane">
+    Reads: DNC list
+    
+    Filters before upload
+  </Card>
+</CardGroup>
+
+---
+
+## Full Schema Template
+
+See the complete template in the source:
+
+```bash
+~/.claude/skills/gtm-skills/skills/context-building/references/context-schema.md
+```
+
+Or view in the [context-building skill reference](/skills/context-building#schema).
+
+---
+
+## Example: Extruct Context File
+
+<Accordion title="Show example context file (partial)">
+```markdown
+# Company Context
+
+## What We Do
+
+**Product:** API-first company search and lookalikes engine for GTM teams.
+
+**Value prop:** Extruct finds companies that match your ICP, even the ones invisible to standard databases. We combine deep web research with AI-powered similarity to surface prospects others miss.
+
+**Email-safe value prop:** Extruct is a company search API that finds prospects matching your best customers, including companies invisible to standard B2B databases.
+
+**Key lingo:**
+- **Lookalike Search**: Find companies similar to a seed company using AI embeddings
+- **Deep Search**: Discovery mode with criteria-based auto-grading
+- **AI Tables**: Research any data point per company with agent columns
+
+**Key numbers:** 
+- 50M+ companies indexed globally
+- 80-90% of lookalike results not in Apollo/ZoomInfo
+- Research agents run in 2-5 minutes per company
+
+---
+
+## Voice
+
+**Sender:** Danny from Extruct
+
+**Tone:** Calm, analytical, builder-to-builder. No hype.
+
+**Language level:** B2 English: simple, clear sentences. Polite but not over-polite.
+
+**Hard constraints:**
+1. No dashes, no exclamation marks, no emojis
+2. No buzzwords: "AI-powered" (unless describing a specific feature), "revolutionary", "game-changer"
+3. Sentence case only (no title case in subject lines)
+4. No questions in P1 (state observations only)
+5. No flattery ("I was impressed by...")
+
+**Banned words:** agents (use "research" or "API"), try (use "test" or "run"), just (filler word)
+
+**Scope boundaries:** Extruct is company-level intelligence, not people data or panel surveys. We find and research companies, not contacts.
+
+---
+
+## ICP
+
+### Primary profiles
+
+| Profile | Company size | Roles | Geographies | Why they buy |
+|---------|-------------|-------|-------------|-------------|
+| Sales tools / CRMs | 20-200 | Founder, Head of Growth | North America, Europe | Need broader company coverage than Apollo/ZoomInfo |
+| Vertical SaaS platforms | 50-500 | VP Product, Head of Data | North America | Want to enrich their user base with company intelligence |
+| GTM agencies | 10-100 | Founder, Partner | North America | Build prospect lists for clients across verticals |
+
+### Anti-patterns (who is NOT a fit)
+
+- Enterprise sales teams (not technical enough to use API)
+- Recruiters (we don't have people data)
+- Individual SDRs (need managed service, not API)
+
+...
+```
+</Accordion>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="context-building Skill" icon="hammer" href="/skills/context-building">
+    Learn how to create and update context files
+  </Card>
+  <Card title="Campaign Artifacts" icon="folder-tree" href="/concepts/campaign-artifacts">
+    See where context files fit in directory structure
+  </Card>
+  <Card title="End-to-End Workflow" icon="diagram-project" href="/concepts/workflow">
+    See how context flows through a campaign
+  </Card>
+  <Card title="hypothesis-building" icon="flask" href="/skills/hypothesis-building">
+    Generate pain hypotheses from context
+  </Card>
+</CardGroup>

@@ -1,0 +1,833 @@
+---
+title: Contact Enrichment Providers
+description: API reference for email finding and contact data providers (Prospeo, FullEnrich)
+---
+
+Integrations with contact enrichment platforms for finding verified emails, phone numbers, and professional data.
+
+## Prospeo API
+
+Prospeo provides access to 200M+ contacts with 30+ search filters, email verification, and person/company enrichment.
+
+### Base Configuration
+
+<ParamField path="Base URL" type="string">
+  ```
+  https://api.prospeo.io
+  ```
+</ParamField>
+
+<ParamField path="Authentication" type="header">
+  ```
+  X-KEY: your_api_key
+  Content-Type: application/json
+  ```
+  
+  Get your API key at [https://app.prospeo.io/api](https://app.prospeo.io/api)
+</ParamField>
+
+<ParamField path="Method" type="string">
+  All endpoints use `POST`
+</ParamField>
+
+### Credit Costs
+
+| Operation | Credits |
+|-----------|--------|
+| Enrich Person (email only) | 1 per match |
+| Enrich Person (with mobile) | 10 per match |
+| Bulk Enrich Person | Same as single, per matched record |
+| Search Person | 1 per page (up to 25 results) |
+| No match found | 0 (no charge) |
+| Duplicate enrichment | 0 (lifetime deduplication) |
+
+### Rate Limits
+
+Tier-based limits. Check response headers:
+
+- `x-daily-request-left` — Remaining daily requests
+- `x-minute-request-left` — Remaining per-minute requests
+- `x-second-rate-limit` — Per-second limit
+- `x-daily-reset-seconds` — Seconds until daily reset
+- `x-minute-reset-seconds` — Seconds until minute reset
+
+Returns `429` when rate limit exceeded.
+
+## Person Search
+
+Search 200M+ contacts with advanced filters.
+
+```bash
+POST /search-person
+```
+
+<ParamField path="filters" type="object" required>
+  Search filters object
+  
+  Each filter has `v` (values array) and `condition` ("or" or "and")
+</ParamField>
+
+<ParamField path="page" type="integer">
+  Page number for pagination (25 results per page, max 1000 pages)
+  
+  Default: 1
+</ParamField>
+
+### Available Filters
+
+<ParamField path="filters.job_title" type="object">
+  Free text job titles
+  
+  ```json
+  {
+    "v": ["VP of Sales", "Head of Sales"],
+    "condition": "or"
+  }
+  ```
+  
+  Use Search Suggestions endpoint for exact values
+</ParamField>
+
+<ParamField path="filters.seniority" type="object">
+  Seniority levels
+  
+  Options: `C-Suite`, `VP`, `Director`, `Manager`, `Senior`, `Entry`, `Training`, `Intern`
+</ParamField>
+
+<ParamField path="filters.department" type="object">
+  Departments
+  
+  Options: `Sales`, `Marketing`, `Engineering`, `Finance`, `HR`, `Operations`, etc.
+</ParamField>
+
+<ParamField path="filters.person_location" type="object">
+  Person location (country, state, or city)
+  
+  ```json
+  {
+    "v": ["United States", "United Kingdom"],
+    "condition": "or"
+  }
+  ```
+</ParamField>
+
+<ParamField path="filters.industry" type="object">
+  Industries (150+ available)
+  
+  ```json
+  {
+    "v": ["Software", "Information Technology"],
+    "condition": "or"
+  }
+  ```
+</ParamField>
+
+<ParamField path="filters.employee_range" type="object">
+  Company size ranges
+  
+  Options: `1-10`, `11-20`, `21-50`, `51-100`, `101-200`, `201-500`, `501-1000`, `1001-5000`, `5001-10000`, `10001+`
+</ParamField>
+
+<ParamField path="filters.company_website" type="object">
+  Company domains (up to 500 per request)
+  
+  ```json
+  {
+    "v": ["acme.com", "example.com"],
+    "condition": "or"
+  }
+  ```
+</ParamField>
+
+<ParamField path="filters.company_name" type="object">
+  Company names
+</ParamField>
+
+<ParamField path="filters.company_location" type="object">
+  Company location (country, state, or city)
+</ParamField>
+
+<ParamField path="filters.funding_stage" type="object">
+  Funding stages
+  
+  Options: `Seed`, `Series A`, `Series B`, `Series C`, etc.
+</ParamField>
+
+<ParamField path="filters.technologies" type="object">
+  Technologies used
+  
+  Options: `Salesforce`, `HubSpot`, etc.
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "filters": {
+    "job_title": {
+      "v": ["VP of Sales", "Head of Sales"],
+      "condition": "or"
+    },
+    "seniority": {
+      "v": ["VP", "Director", "C-Suite"],
+      "condition": "or"
+    },
+    "department": {
+      "v": ["Sales"],
+      "condition": "or"
+    },
+    "person_location": {
+      "v": ["United States"],
+      "condition": "or"
+    },
+    "employee_range": {
+      "v": ["51-200", "201-500"],
+      "condition": "or"
+    }
+  },
+  "page": 1
+}
+```
+
+### Response
+
+<ResponseField name="error" type="boolean">
+  Error indicator
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of person and company objects
+  
+  **Note:** Does NOT include email/mobile — use Enrich Person for contact data
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+  
+  - `current_page`: Current page number
+  - `per_page`: Results per page (25)
+  - `total_page`: Total pages available (max 1000)
+  - `total_count`: Total matching records
+</ResponseField>
+
+```json
+{
+  "error": false,
+  "results": [
+    {
+      "person": {
+        "id": "person-uuid",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "full_name": "Jane Doe",
+        "linkedin_url": "https://linkedin.com/in/janedoe",
+        "title": "VP of Sales",
+        "seniority": "VP",
+        "department": "Sales",
+        "location": "San Francisco, CA, US",
+        "skills": ["B2B Sales", "SaaS", "Revenue Operations"]
+      },
+      "company": {
+        "name": "Acme Corp",
+        "website": "acme.com",
+        "linkedin_url": "https://linkedin.com/company/acme",
+        "industry": "Software",
+        "headcount": 250,
+        "founded_year": 2018,
+        "location": "San Francisco, CA, US"
+      }
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "per_page": 25,
+    "total_page": 40,
+    "total_count": 1000
+  }
+}
+```
+
+## Person Enrichment
+
+Get verified email and optional mobile for a specific person.
+
+```bash
+POST /enrich-person
+```
+
+### Required Fields
+
+Provide at least one of these combinations:
+
+1. `first_name` + `last_name` + (`company_website` | `company_name` | `company_linkedin_url`)
+2. `full_name` + company info
+3. `linkedin_url` alone
+4. `email` alone
+5. `person_id` (from Search Person results)
+
+### Request Parameters
+
+<ParamField path="data" type="object" required>
+  Person identification data
+  
+  ```json
+  {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "company_website": "acme.com"
+  }
+  ```
+</ParamField>
+
+<ParamField path="only_verified_email" type="boolean" default={false}>
+  Only return if email is verified
+</ParamField>
+
+<ParamField path="enrich_mobile" type="boolean" default={false}>
+  Include mobile lookup
+  
+  **Cost:** 10 credits instead of 1
+</ParamField>
+
+<ParamField path="only_verified_mobile" type="boolean" default={false}>
+  Only return if mobile is verified
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "data": {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "company_website": "acme.com"
+  },
+  "only_verified_email": true,
+  "enrich_mobile": true,
+  "only_verified_mobile": false
+}
+```
+
+### Response
+
+<ResponseField name="error" type="boolean">
+  Error indicator
+</ResponseField>
+
+<ResponseField name="free_enrichment" type="boolean">
+  Whether this was a duplicate (no credit charged)
+</ResponseField>
+
+<ResponseField name="person" type="object">
+  Person data with contact information
+</ResponseField>
+
+<ResponseField name="company" type="object">
+  Company data
+</ResponseField>
+
+```json
+{
+  "error": false,
+  "free_enrichment": false,
+  "person": {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "full_name": "Jane Doe",
+    "linkedin_url": "https://linkedin.com/in/janedoe",
+    "title": "VP of Sales",
+    "email": "jane.doe@acme.com",
+    "email_verified": true,
+    "mobile": "+14155551234",
+    "mobile_verified": true,
+    "location": "San Francisco, CA, US",
+    "skills": ["B2B Sales", "SaaS"]
+  },
+  "company": {
+    "name": "Acme Corp",
+    "website": "acme.com",
+    "industry": "Software",
+    "headcount": 250
+  }
+}
+```
+
+### Error Codes
+
+- `NO_MATCH`: No person found matching criteria
+- `INVALID_DATAPOINTS`: Invalid or insufficient input data
+- `INSUFFICIENT_CREDITS`: Not enough credits
+- `INVALID_API_KEY`: Invalid API key
+- `RATE_LIMITED`: Rate limit exceeded
+
+## Bulk Person Enrichment
+
+Enrich up to 50 records at once.
+
+```bash
+POST /bulk-enrich-person
+```
+
+<ParamField path="only_verified_email" type="boolean" default={false}>
+  Only return verified emails
+</ParamField>
+
+<ParamField path="enrich_mobile" type="boolean" default={false}>
+  Include mobile lookup (10 credits per match)
+</ParamField>
+
+<ParamField path="only_verified_mobile" type="boolean" default={false}>
+  Only return verified mobiles
+</ParamField>
+
+<ParamField path="data" type="array" required>
+  Array of person objects (max 50)
+  
+  Same matching rules as single enrichment
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "only_verified_email": true,
+  "enrich_mobile": false,
+  "data": [
+    {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "company_website": "acme.com"
+    },
+    {
+      "linkedin_url": "https://linkedin.com/in/johndoe"
+    }
+  ]
+}
+```
+
+### Response
+
+<ResponseField name="error" type="boolean">
+  Error indicator
+</ResponseField>
+
+<ResponseField name="total_cost" type="integer">
+  Total credits consumed
+</ResponseField>
+
+<ResponseField name="matched" type="array">
+  Successfully matched persons
+</ResponseField>
+
+<ResponseField name="not_matched" type="array">
+  Persons with no match found
+</ResponseField>
+
+<ResponseField name="invalid_datapoints" type="array">
+  Invalid input records
+</ResponseField>
+
+```json
+{
+  "error": false,
+  "total_cost": 5,
+  "matched": [
+    {
+      "person": { ... },
+      "company": { ... }
+    }
+  ],
+  "not_matched": [
+    {
+      "first_name": "Unknown",
+      "last_name": "Person",
+      "company_website": "none.com"
+    }
+  ],
+  "invalid_datapoints": []
+}
+```
+
+---
+
+## FullEnrich API
+
+FullEnrich uses waterfall enrichment — tries multiple data providers sequentially to maximize hit rate on emails and phones.
+
+### Base Configuration
+
+<ParamField path="Base URL" type="string">
+  ```
+  https://api.fullenrich.com/api/v1
+  ```
+</ParamField>
+
+<ParamField path="Authentication" type="header">
+  ```
+  Authorization: Bearer YOUR_API_KEY
+  ```
+  
+  Get your API key at [https://app.fullenrich.com/app/api](https://app.fullenrich.com/app/api)
+</ParamField>
+
+### Credit Costs
+
+| Data Point | Credits |
+|------------|--------|
+| Work email found | 1 |
+| Personal email found | 3 |
+| Mobile phone found | 10 |
+| Search result returned | 0.25 per contact/company |
+| No result found | 0 (no charge) |
+| Duplicate (within 3 months) | 0 (no charge) |
+
+### Rate Limits
+
+- **60 API calls per minute** (can be increased on request)
+- **100 contacts per bulk enrichment request**
+- **100 concurrent enrichments** in queue
+- **100 concurrent reverse lookups** in queue
+- Effective throughput: ~6,000 contacts/minute
+
+### Processing Time
+
+- Average: 30-90 seconds per contact
+- Varies by data availability and waterfall depth
+- **Use webhooks (recommended)** instead of polling
+
+## Account Management
+
+### Check Credits
+
+```bash
+GET /account/credits
+```
+
+**Response:**
+
+```json
+{
+  "credits": 1234
+}
+```
+
+### Verify API Key
+
+```bash
+GET /account/keys/verify
+```
+
+## Bulk Contact Enrichment
+
+Asynchronous bulk enrichment with webhook delivery.
+
+```bash
+POST /contact/enrich/bulk
+```
+
+### Required Fields
+
+Provide at least one combination:
+
+1. `first_name` + `last_name` + `domain` (or `company_name`)
+2. `linkedin_url` (improves accuracy 5-20% for emails, 10-60% for phones)
+
+### Request Parameters
+
+<ParamField path="contacts" type="array" required>
+  Array of contact objects (max 100)
+  
+  ```json
+  [
+    {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "domain": "acme.com",
+      "linkedin_url": "https://www.linkedin.com/in/janedoe/"
+    }
+  ]
+  ```
+</ParamField>
+
+<ParamField path="webhook_url" type="string">
+  URL for async result delivery (recommended over polling)
+</ParamField>
+
+<ParamField path="webhook_events" type="array">
+  Events to trigger webhook
+  
+  Options: `["contact_finished"]` for per-contact notifications
+</ParamField>
+
+<ParamField path="silentFail" type="boolean" query>
+  Skip invalid contacts quietly (query parameter)
+</ParamField>
+
+### Contact Object Fields
+
+<ParamField path="first_name" type="string">
+  Person first name
+</ParamField>
+
+<ParamField path="last_name" type="string">
+  Person last name
+</ParamField>
+
+<ParamField path="domain" type="string">
+  Company domain (recommended over company_name for better accuracy)
+</ParamField>
+
+<ParamField path="company_name" type="string">
+  Company name (use domain when possible)
+</ParamField>
+
+<ParamField path="linkedin_url" type="string">
+  LinkedIn profile URL (significantly improves accuracy)
+</ParamField>
+
+### Example Request
+
+```json
+{
+  "contacts": [
+    {
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "domain": "acme.com",
+      "linkedin_url": "https://www.linkedin.com/in/janedoe/"
+    }
+  ],
+  "webhook_url": "https://your-server.com/webhook",
+  "webhook_events": ["contact_finished"]
+}
+```
+
+### Initial Response
+
+<ResponseField name="enrichment_id" type="string">
+  UUID for tracking enrichment status
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Processing status: `processing`, `completed`
+</ResponseField>
+
+<ResponseField name="total_contacts" type="integer">
+  Number of contacts in batch
+</ResponseField>
+
+```json
+{
+  "enrichment_id": "uuid",
+  "status": "processing",
+  "total_contacts": 5
+}
+```
+
+### Get Enrichment Results
+
+```bash
+GET /contact/enrich/bulk/{enrichment_id}
+```
+
+<ResponseField name="enrichment_id" type="string">
+  Enrichment UUID
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Status: `processing` or `completed`
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of enriched contact data
+</ResponseField>
+
+### Enrichment Result Structure
+
+<ResponseField name="input" type="object">
+  Original input data
+</ResponseField>
+
+<ResponseField name="work_email" type="object">
+  Work email with verification status
+  
+  ```json
+  {
+    "email": "jane.doe@acme.com",
+    "verification_status": "DELIVERABLE"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="personal_email" type="object">
+  Personal email with verification status
+</ResponseField>
+
+<ResponseField name="mobile_phone" type="object">
+  Mobile phone number
+  
+  ```json
+  {
+    "number": "+14155551234",
+    "region": "US"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="profile" type="object">
+  Detailed person profile
+  
+  Includes: full_name, title, location, linkedin_url, employment_history, education
+</ResponseField>
+
+<ResponseField name="company" type="object">
+  Company information
+  
+  Includes: name, domain, industry, employee_count
+</ResponseField>
+
+### Email Verification Statuses
+
+| Status | Bounce Rate | Recommendation |
+|--------|------------|----------------|
+| `DELIVERABLE` | ~2% | Safe to email |
+| `HIGH_PROBABILITY` | ~9% | Safe (catch-all validated) |
+| `CATCH_ALL` | Higher | Use with caution |
+| `INVALID` | Likely bounces | Do not email |
+
+### Example Response
+
+```json
+{
+  "enrichment_id": "uuid",
+  "status": "completed",
+  "results": [
+    {
+      "input": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "domain": "acme.com"
+      },
+      "work_email": {
+        "email": "jane.doe@acme.com",
+        "verification_status": "DELIVERABLE"
+      },
+      "personal_email": {
+        "email": "jane@gmail.com",
+        "verification_status": "DELIVERABLE"
+      },
+      "mobile_phone": {
+        "number": "+14155551234",
+        "region": "US"
+      },
+      "profile": {
+        "full_name": "Jane Doe",
+        "title": "VP of Sales",
+        "location": "San Francisco, CA",
+        "linkedin_url": "https://linkedin.com/in/janedoe",
+        "employment_history": [...],
+        "education": [...]
+      },
+      "company": {
+        "name": "Acme Corp",
+        "domain": "acme.com",
+        "industry": "Software",
+        "employee_count": 250
+      }
+    }
+  ]
+}
+```
+
+## Reverse Email Lookup
+
+Find person and company from email address.
+
+```bash
+POST /contact/reverse/email/bulk
+```
+
+<ParamField path="emails" type="array" required>
+  Array of email addresses
+</ParamField>
+
+<ParamField path="webhook_url" type="string">
+  Webhook URL for async delivery
+</ParamField>
+
+**Cost:** 1 credit per match. Works with work and personal emails.
+
+**Example:**
+
+```json
+{
+  "emails": ["jane@acme.com", "john@example.com"],
+  "webhook_url": "https://your-server.com/webhook"
+}
+```
+
+**Fetch results:**
+
+```bash
+GET /contact/reverse/email/bulk/{enrichment_id}
+```
+
+## People Search
+
+Synchronous people search with filters.
+
+```bash
+POST /people/search
+```
+
+<ParamField path="filters" type="object" required>
+  Search filter criteria
+  
+  ```json
+  {
+    "job_title": ["VP of Sales", "Head of Sales"],
+    "seniority": ["VP", "Director"],
+    "location": ["United States"],
+    "company_size": ["51-200", "201-500"],
+    "industry": ["Software"]
+  }
+  ```
+</ParamField>
+
+<ParamField path="page" type="integer">
+  Page number for pagination
+</ParamField>
+
+**Cost:** 0.25 credits per result returned
+
+**Response:** Synchronous (no polling needed)
+
+## Webhook Integration
+
+Set `webhook_url` in bulk requests for async result delivery.
+
+### Webhook Events
+
+- `contact_finished`: Triggered per contact as it completes
+- Retries: Up to 5 times on delivery failure
+
+### Webhook Payload
+
+Same structure as GET results endpoint.
+
+## Test Contact (Free)
+
+Use this contact for testing at 0 credit cost:
+
+```json
+{
+  "first_name": "Grégoire",
+  "last_name": "Démogé",
+  "domain": "fullenrich.com",
+  "linkedin_url": "https://www.linkedin.com/in/demoge/"
+}
+```
+
+## Data Retention
+
+Results retained for 3 months (GDPR compliant). Re-enrichment within window costs 0 credits.

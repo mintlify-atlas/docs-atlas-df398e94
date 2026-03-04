@@ -1,0 +1,382 @@
+---
+title: Email Sequencing Providers
+description: API reference for cold email campaign platforms (Instantly)
+---
+
+Integrations with email sequencing platforms for sending multi-touch outbound campaigns.
+
+## Instantly API
+
+Instantly is a cold email automation platform for managing campaigns, uploading leads, and tracking engagement.
+
+### Base Configuration
+
+<ParamField path="Base URL" type="string">
+  ```
+  https://api.instantly.ai/api/v2
+  ```
+</ParamField>
+
+<ParamField path="Authentication" type="header">
+  ```
+  Authorization: Bearer YOUR_API_KEY
+  ```
+  
+  Get your API key from the Instantly dashboard.
+</ParamField>
+
+### Rate Limits
+
+- **10 requests per second**
+- **100 leads per upload request**
+- Add 0.5s pause between consecutive uploads
+
+## Campaign Management
+
+### List Campaigns
+
+```bash
+GET /campaigns?limit=100&skip=0
+```
+
+<ResponseField name="items" type="array">
+  Array of campaign objects
+  
+  ```json
+  [
+    {
+      "id": "campaign-uuid",
+      "name": "Campaign Name",
+      "status": "active"
+    }
+  ]
+  ```
+</ResponseField>
+
+**Status values:** `active`, `paused`, `draft`, `completed`
+
+### Create Campaign
+
+```bash
+POST /campaigns
+```
+
+<ParamField path="name" type="string" required>
+  Campaign name
+  
+  **Example:** "PE Rollup - Blue Collar - 2026-03"
+</ParamField>
+
+**Response:**
+
+```json
+{
+  "id": "campaign-uuid",
+  "name": "PE Rollup - Blue Collar - 2026-03"
+}
+```
+
+### Get Campaign
+
+```bash
+GET /campaigns/{campaign_id}
+```
+
+Returns detailed campaign information including settings and sequences.
+
+## Lead Management
+
+### Upload Leads
+
+```bash
+POST /leads
+```
+
+<ParamField path="campaign_id" type="string" required>
+  Target campaign UUID
+</ParamField>
+
+<ParamField path="skip_if_in_workspace" type="boolean">
+  Skip if email exists in ANY campaign across workspace
+  
+  Default: `false`
+</ParamField>
+
+<ParamField path="skip_if_in_campaign" type="boolean">
+  Skip only if email exists in THIS campaign
+  
+  Default: `false`
+</ParamField>
+
+<ParamField path="leads" type="array" required>
+  Array of lead objects (max 100 per request)
+  
+  ```json
+  [
+    {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "company_name": "Acme Corp",
+      "website": "acme.com",
+      "personalization": "First paragraph text here",
+      "custom_variables": {
+        "second_paragraph": "...",
+        "third_paragraph": "...",
+        "fourth_paragraph": "...",
+        "hypothesis": "Database blind spot"
+      }
+    }
+  ]
+  ```
+</ParamField>
+
+#### Lead Object Fields
+
+<ParamField path="email" type="string" required>
+  Lead email address
+</ParamField>
+
+<ParamField path="first_name" type="string">
+  Lead first name
+</ParamField>
+
+<ParamField path="last_name" type="string">
+  Lead last name
+</ParamField>
+
+<ParamField path="company_name" type="string">
+  Company name
+</ParamField>
+
+<ParamField path="website" type="string">
+  Company website
+</ParamField>
+
+<ParamField path="personalization" type="string">
+  First paragraph personalization text
+  
+  Maps to `{{personalization}}` variable in email templates
+</ParamField>
+
+<ParamField path="custom_variables" type="object">
+  Additional template variables
+  
+  Common fields:
+  - `second_paragraph`
+  - `third_paragraph`
+  - `fourth_paragraph`
+  - `hypothesis`
+  
+  All custom variables are accessible as `{{variable_name}}` in templates
+</ParamField>
+
+#### Response
+
+<ResponseField name="uploaded" type="integer">
+  Number of leads successfully uploaded
+</ResponseField>
+
+<ResponseField name="skipped" type="integer">
+  Number of leads skipped due to deduplication
+</ResponseField>
+
+```json
+{
+  "uploaded": 95,
+  "skipped": 5
+}
+```
+
+### List Leads in Campaign
+
+```bash
+GET /leads?campaign_id={id}&limit=100&skip=0
+```
+
+Returns paginated list of leads in a campaign.
+
+### Delete Lead
+
+```bash
+DELETE /leads/{lead_id}
+```
+
+Removes a lead from the campaign.
+
+## Campaign Analytics
+
+### Get Campaign Summary
+
+```bash
+GET /campaigns/{campaign_id}/analytics/overview
+```
+
+<ResponseField name="total_leads" type="integer">
+  Total leads in campaign
+</ResponseField>
+
+<ResponseField name="contacted" type="integer">
+  Number of leads contacted
+</ResponseField>
+
+<ResponseField name="emails_sent" type="integer">
+  Total emails sent (including follow-ups)
+</ResponseField>
+
+<ResponseField name="opens" type="integer">
+  Number of email opens
+</ResponseField>
+
+<ResponseField name="replies" type="integer">
+  Number of replies received
+</ResponseField>
+
+<ResponseField name="bounces" type="integer">
+  Number of bounced emails
+</ResponseField>
+
+<ResponseField name="unsubscribes" type="integer">
+  Number of unsubscribes
+</ResponseField>
+
+**Example response:**
+
+```json
+{
+  "total_leads": 500,
+  "contacted": 450,
+  "emails_sent": 1200,
+  "opens": 380,
+  "replies": 42,
+  "bounces": 15,
+  "unsubscribes": 3
+}
+```
+
+### Filter Leads by Status
+
+```bash
+GET /leads?campaign_id={id}&status=replied
+```
+
+**Status values:**
+- `not_yet_contacted`
+- `contacted`
+- `replied`
+- `bounced`
+- `unsubscribed`
+- `interested`
+- `not_interested`
+- `meeting_booked`
+
+## Email Account Management
+
+### List Email Accounts
+
+```bash
+GET /email-accounts?limit=100
+```
+
+Returns all email accounts connected to workspace.
+
+### Check Warmup Status
+
+```bash
+GET /email-accounts/{account_id}
+```
+
+Check warmup status and reputation score for an email account.
+
+**Response fields:**
+- `warmup_status`: Current warmup state
+- `reputation_score`: Email deliverability score
+
+## Email Template Variables
+
+When creating email sequences in the Instantly dashboard, reference these variables:
+
+### Standard Variables
+
+```
+{{first_name}}       → Lead first name
+{{last_name}}        → Lead last name
+{{company_name}}     → Company name
+{{website}}          → Company website
+```
+
+### Personalization Variables
+
+```
+{{personalization}}  → First paragraph (maps to lead.personalization)
+{{second_paragraph}} → From custom_variables
+{{third_paragraph}}  → From custom_variables
+{{fourth_paragraph}} → From custom_variables
+```
+
+### Typical Email Template Structure
+
+```
+Hey {{first_name}},
+
+{{personalization}}
+
+{{second_paragraph}}
+
+{{third_paragraph}}
+
+{{fourth_paragraph}}
+
+Best,
+Your name
+```
+
+This maps to the P1-P4 paragraph structure used in GTM Skills email generation.
+
+## Deduplication Options
+
+Instantly provides flexible deduplication:
+
+<ParamField path="skip_if_in_workspace" type="boolean" default={false}>
+  Skip if email exists anywhere in workspace
+  
+  **Use when:** You never want to email the same person twice across all campaigns
+</ParamField>
+
+<ParamField path="skip_if_in_campaign" type="boolean" default={false}>
+  Skip only if email exists in this specific campaign
+  
+  **Use when:** You want to allow the same person in different campaigns
+</ParamField>
+
+<ParamField path="Default (both false)" type="behavior">
+  Always upload, even if duplicate
+  
+  **Use when:** Testing or intentionally re-uploading
+</ParamField>
+
+## Best Practices
+
+### Batch Upload Strategy
+
+1. Split large lists into batches of 100 leads
+2. Add 0.5s delay between requests
+3. Track `uploaded` vs `skipped` counts
+4. Log any failed uploads for retry
+
+### Rate Limit Handling
+
+```javascript
+// Pseudo-code for batch upload
+for (const batch of leadBatches) {
+  await uploadLeads(batch);
+  await sleep(500); // 0.5s delay
+}
+```
+
+### Variable Naming
+
+Match custom variable keys in API payload to template variable names:
+
+- API: `custom_variables.second_paragraph`
+- Template: `{{second_paragraph}}`

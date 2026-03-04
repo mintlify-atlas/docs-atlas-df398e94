@@ -1,0 +1,391 @@
+---
+title: "End-to-End Workflow"
+description: "Complete campaign workflow from context building to email sending"
+---
+
+This page walks through a full outbound campaign using GTM Skills, showing how each skill builds on the previous one's output.
+
+## Campaign Phases
+
+A typical campaign has four phases:
+
+<Steps>
+  <Step title="Foundation">
+    Build reusable company context
+  </Step>
+  <Step title="Research">
+    Define target market and pain hypotheses
+  </Step>
+  <Step title="List Building & Enrichment">
+    Find companies, research data points, segment by fit
+  </Step>
+  <Step title="Email Generation & Sending">
+    Create personalized emails and upload to sequencer
+  </Step>
+</Steps>
+
+## Phase 1: Foundation
+
+### Build Company Context
+
+**Skill:** [context-building](/skills/context-building)
+
+Create the global context file that all other skills read from.
+
+```bash Example Prompt
+Build a company context file for www.extruct.ai
+```
+
+**What happens:**
+1. Claude reads your website to extract product info and value prop
+2. Asks for voice rules, ICP profiles, win cases
+3. Creates `/claude-code-gtm/context/extruct_context.md`
+
+**Outputs:**
+- Single context file with ICP, voice, win cases, proof library
+- This file is referenced by every downstream skill
+
+<Tip>
+Run this skill **once per company**. Update it when you add win cases or learn from campaigns.
+</Tip>
+
+---
+
+## Phase 2: Research
+
+### Option A: Fast Hypothesis Building (No API Required)
+
+**Skill:** [hypothesis-building](/skills/hypothesis-building)
+
+Generate pain hypotheses from your own knowledge + context file.
+
+```bash Example Prompt  
+Build a hypothesis set for enterprise SaaS platforms
+targeting companies in North America
+```
+
+**What happens:**
+1. Reads context file for ICP and win cases
+2. Asks what you know about the vertical
+3. Drafts 3-7 hypotheses with search angles
+4. Saves to `/claude-code-gtm/context/enterprise-saas/hypothesis_set.md`
+
+**Best for:** Verticals you know well
+
+### Option B: Deep Market Research (API Required)
+
+**Skill:** [market-research](/skills/market-research)
+
+Validate hypotheses with external research APIs (e.g., Perplexity).
+
+```bash Example Prompt
+Research the enterprise SaaS vertical—what are their
+data enrichment pain points?
+```
+
+**What happens:**
+1. Reads context file and runs research queries
+2. Extracts data points, tool comparisons, pain mechanisms
+3. Saves research + hypothesis set
+
+**Outputs:**
+- `/claude-code-gtm/context/enterprise-saas/sourcing_research.md`
+- `/claude-code-gtm/context/enterprise-saas/hypothesis_set.md`
+
+**Best for:** New verticals you're entering blind
+
+<Info>
+`hypothesis-building` and `market-research` produce the **same output format** (`hypothesis_set.md`). Use whichever fits your workflow.
+</Info>
+
+---
+
+## Phase 3: List Building & Enrichment
+
+### Step 1: Find Companies
+
+**Skill:** [list-building](/skills/list-building)
+
+Build prospect lists using Extruct API.
+
+```bash Example Prompt
+Find 500 enterprise SaaS platforms similar to salesforce.com
+```
+
+**What happens:**
+1. Reads hypothesis set for search angles
+2. Runs lookalike/semantic/discovery searches
+3. Deduplicates and removes DNC domains
+4. Uploads to Extruct table for enrichment
+
+**Outputs:**
+- Extruct table with company profiles
+- Optional local CSV at `/claude-code-gtm/csv/input/{campaign-slug}/companies.csv`
+
+### Step 2: Design Enrichment Columns
+
+**Skill:** [enrichment-design](/skills/enrichment-design)
+
+Define what to research about each company.
+
+```bash Example Prompt  
+Design enrichment columns to qualify these companies
+for our data enrichment hypothesis
+```
+
+**What happens:**
+1. Reads hypothesis set
+2. Proposes 3-5 columns (segmentation + personalization)
+3. Refines with you interactively
+4. Outputs `column_configs` JSON
+
+**Two modes:**
+- **Segmentation:** Columns that score hypothesis fit (e.g., "Data Infrastructure Maturity")
+- **Personalization:** Columns for email hooks (e.g., "Recent Product Launch")
+
+### Step 3: Run Enrichment
+
+**Skill:** [list-enrichment](/skills/list-enrichment)
+
+Add research columns to the table.
+
+```bash Example Prompt
+Add these enrichment columns to table abc123
+```
+
+**What happens:**
+1. Creates agent columns in Extruct table
+2. Triggers enrichment run (research agents execute per row)
+3. Polls for progress and shows % complete
+4. Spot-checks quality with sample rows
+
+### Step 4: Segment by Fit
+
+**Skill:** [list-segmentation](/skills/list-segmentation)
+
+Tier companies by hypothesis fit and data richness.
+
+```bash Example Prompt
+Segment this list into Tier 1/2/3 based on enrichment data
+```
+
+**What happens:**
+1. Reads hypothesis set and enrichment columns
+2. Scores each company on hypothesis match + data quality
+3. Assigns tier (1 = best fit, 3 = no match)
+4. Exports segmented CSV
+
+**Outputs:**
+- `/claude-code-gtm/csv/input/{campaign-slug}/companies_segmented.csv`
+
+**Tiering logic:**
+- **Tier 1:** Strong hypothesis match + rich enrichment data → personalized emails
+- **Tier 2:** Moderate match → hypothesis-based templates  
+- **Tier 3:** Weak match → exclude or re-research
+
+---
+
+## Phase 4: Email Generation & Sending
+
+### Step 1: Find People
+
+**Skill:** [people-search](/skills/people-search)
+
+Find decision makers at target companies.
+
+```bash Example Prompt
+Find VPs of Engineering at these Tier 1 companies
+```
+
+**What happens:**
+1. Reads company CSV
+2. Runs LinkedIn search via Extruct API
+3. Returns people with titles, LinkedIn URLs
+
+### Step 2: Get Contact Info
+
+**Skill:** [email-search](/skills/email-search)
+
+Enrich with verified emails and phone numbers.
+
+```bash Example Prompt  
+Get emails for these contacts using Prospeo
+```
+
+**What happens:**
+1. Reads people CSV
+2. Calls contact enrichment provider (Prospeo, FullEnrich)
+3. Returns verified emails, phones, social profiles
+
+### Step 3: Build Email Prompt Template
+
+**Skill:** [email-prompt-building](/skills/email-prompt-building)
+
+Create a self-contained prompt for email generation.
+
+```bash Example Prompt
+Build an email prompt for enterprise SaaS VPs of Engineering
+```
+
+**What happens:**
+1. Reads context file (voice, proof library, value prop)
+2. Reads research + hypothesis set  
+3. Synthesizes everything into a self-contained prompt
+4. Saves to `/claude-code-gtm/prompts/enterprise-saas/en_first_email.md`
+
+**What's in the prompt:**
+- Voice rules and banned words (from context file)
+- Hypothesis-based P1 angles (from research)
+- P2 value angles (from context → What We Do)
+- P4 proof points (from context → Proof Library)
+- Structural variants (by role and seniority)
+
+<Warning>
+The prompt template is **self-contained**. Email generation only needs this file + contact CSV—it doesn't read the context file or research.
+</Warning>
+
+### Step 4: Generate Emails
+
+**Skill:** [email-generation](/skills/email-generation)
+
+Run the prompt template against each contact.
+
+```bash Example Prompt
+Generate emails using the prompt template and contacts CSV
+```
+
+**What happens:**
+1. Reads prompt template + contact CSV  
+2. Applies prompt per row with enrichment data
+3. Outputs email JSON per contact
+4. Saves to `/claude-code-gtm/csv/output/{campaign-slug}/emails.csv`
+
+**Tier-aware generation:**
+- **Tier 1:** Individual attention, routed to simulation for review
+- **Tier 2:** Batched by hypothesis group
+- **Tier 3:** Skipped
+
+### Step 5: Review Tier 1 Emails (Optional)
+
+**Skill:** [email-response-simulation](/skills/email-response-simulation)
+
+Simulate how prospects will read your emails.
+
+```bash Example Prompt  
+Simulate responses for these Tier 1 emails
+```
+
+**What happens:**
+1. Reads generated emails
+2. Simulates persona reading the email
+3. Flags issues: buzzwords, weak hooks, generic copy
+4. Suggests rewrites constrained by voice rules
+
+### Step 6: Upload to Sequencer
+
+**Skill:** [campaign-sending](/skills/campaign-sending)
+
+Upload leads to email sequencer (e.g., Instantly).
+
+```bash Example Prompt
+Upload these contacts to Instantly campaign 'enterprise-saas-q1'
+```
+
+**What happens:**
+1. Reads context file for DNC list
+2. Filters contacts against DNC  
+3. Uploads to sequencer via API
+4. Returns upload summary
+
+---
+
+## Feedback Loop
+
+After the campaign runs, update your context file with learnings:
+
+```bash Example Prompt
+Update context file with campaign results from Instantly
+```
+
+**What happens:**
+1. Imports campaign metrics (reply rate, positive replies)
+2. Updates Campaign History table in context file
+3. Promotes/retires hypotheses based on performance
+4. Adds new proof points from positive replies
+
+This closes the loop—each campaign improves the next one.
+
+---
+
+## Example: Full Campaign in One Prompt
+
+Plan mode can run the entire workflow:
+
+```bash
+I'm building www.extruct.ai.
+One customer is www.salesforce.com—they use us for market intelligence.
+Find 200 similar enterprise SaaS platforms in North America,
+enrich them with relevant data points,
+and generate personalized emails to VPs of Product.
+```
+
+Claude will:
+1. Build context file from extruct.ai  
+2. Generate hypothesis set for "enterprise SaaS platforms"
+3. Run lookalike search from salesforce.com
+4. Design + run enrichment columns
+5. Segment into tiers
+6. Find VPs of Product
+7. Get emails
+8. Build prompt template
+9. Generate emails
+10. Export for sending
+
+All in one conversation.
+
+---
+
+## What Gets Created
+
+After a full campaign, your file structure looks like:
+
+```
+claude-code-gtm/
+├── context/
+│   ├── extruct_context.md
+│   └── enterprise-saas/
+│       ├── hypothesis_set.md
+│       └── sourcing_research.md (if using market-research)
+├── prompts/
+│   └── enterprise-saas/
+│       └── en_first_email.md
+└── csv/
+    ├── input/enterprise-saas-q1/
+    │   ├── companies.csv
+    │   ├── companies_segmented.csv
+    │   ├── people.csv
+    │   └── contacts.csv
+    └── output/enterprise-saas-q1/
+        └── emails.csv
+```
+
+See [Campaign Artifacts](/concepts/campaign-artifacts) for detailed file structure.
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Context Files" icon="file-lines" href="/concepts/context-files">
+    Deep dive on the global context file schema
+  </Card>
+  <Card title="Campaign Artifacts" icon="folder-tree" href="/concepts/campaign-artifacts">
+    Understand directory structure and file organization  
+  </Card>
+  <Card title="Browse Skills" icon="grid" href="/skills/overview">
+    Explore all 13 skills and their capabilities
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Try your first campaign
+  </Card>
+</CardGroup>

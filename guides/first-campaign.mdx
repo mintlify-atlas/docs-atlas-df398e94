@@ -1,0 +1,314 @@
+---
+title: 'Your First Campaign'
+description: 'Complete walkthrough from company context to sending your first outbound campaign'
+---
+
+# Your First Campaign
+
+This guide walks you through running your first outbound campaign using GTM Skills, from building your company context to sending emails. Expect 2-3 hours for a 200-company campaign.
+
+## What You'll Build
+
+By the end, you'll have:
+- Company context file with ICP, voice, and proof points
+- 200+ qualified target companies
+- Enriched data for personalization
+- Segmented and tiered prospect list
+- 150+ generated emails ready to send
+
+## Prerequisites
+
+<Steps>
+  <Step title="Get Extruct API Token">
+    Sign up at [extruct.ai](https://www.extruct.ai) and grab your API token. Free trial includes 100 credits.
+    
+    ```bash
+    export EXTRUCT_API_TOKEN=your_token_here
+    ```
+  </Step>
+  
+  <Step title="Install GTM Skills">
+    Via Claude Code plugin manager:
+    ```
+    /plugin marketplace add extruct-ai/gtm-skills
+    /plugin install gtm-skills
+    ```
+    
+    Or via skills.sh CLI:
+    ```bash
+    npx skills add extruct-ai/gtm-skills
+    ```
+  </Step>
+</Steps>
+
+## Campaign Workflow
+
+### Step 1: Build Company Context
+
+Start with the context-building skill to capture your ICP, voice, and proof points.
+
+```
+I'm building [your-website.com].
+Help me create a company context file.
+```
+
+Claude will ask for:
+
+| Section | What to provide | Example |
+|---------|----------------|----------|
+| **What We Do** | Product one-liner, key numbers | "API-first company search engine. 50M+ companies indexed." |
+| **Voice** | Sender name, tone, constraints | "From: Sarah Chen. Tone: technical peer. No superlatives." |
+| **ICP** | Target profiles with sizes | "B2B SaaS, 20-200 people, US/EU, selling to enterprise" |
+| **Win Cases** | 2-3 happy customers | "Acme Corp uses us for supplier discovery. 10K searches/mo." |
+| **Proof Library** | Ready-to-paste PS sentences | "PS. Shopify runs 50K lookalike searches/mo to find acquisition targets." |
+
+<Note>
+  The context file lives at `claude-code-gtm/context/{company}_context.md` and all other skills read from it.
+</Note>
+
+### Step 2: Build Your Target List
+
+Use list-building to find 200-500 companies matching your ICP.
+
+**Option A: Start from a win case (recommended)**
+```
+Find companies similar to acme.com (one of our best customers).
+Target 200 companies, B2B SaaS, 20-200 employees, US only.
+```
+
+**Option B: Semantic search**
+```
+Find 200 companies that:
+- Build B2B marketplace platforms
+- Serve enterprise buyers
+- Need supplier/vendor discovery
+```
+
+**Output**: Extruct table with 200+ companies + auto-enriched company profiles.
+
+<Tip>
+  Mix lookalike and semantic search for broader coverage. Run both in parallel, then deduplicate.
+</Tip>
+
+### Step 3: Enrich for Personalization
+
+Add 3-5 research columns to segment and personalize.
+
+```
+Add these enrichment columns to table [table-id]:
+1. Primary vertical (select: Manufacturing, Logistics, Healthcare, Fintech)
+2. Platform type (text: what their product does)
+3. Recent funding (select: Bootstrapped, Seed, Series A, Series B+)
+```
+
+Claude will:
+1. Create AI agent columns
+2. Run enrichment (1 credit per cell)
+3. Monitor progress
+4. Show you a quality spot-check
+
+**Typical enrichment time**: 5-10 minutes for 200 companies × 3 columns.
+
+### Step 4: Generate Hypothesis Set
+
+Create pain hypotheses based on your ICP and win cases.
+
+```
+Read my context file and generate a hypothesis set
+for marketplace platforms that need supplier discovery.
+```
+
+**Output**: `claude-code-gtm/context/{vertical-slug}/hypothesis_set.md`
+
+Example hypothesis:
+```markdown
+## Hypothesis 1: Stale supplier data
+
+**Pain**: Marketplaces with 1000+ suppliers see 15-20% profile decay per year.
+**Mechanism**: Companies rebrand, get acquired, go out of business.
+**Best fit**: B2B marketplaces, 2+ years old, manufacturing/logistics vertical
+```
+
+### Step 5: Segment and Tier
+
+Match companies to hypotheses and assign tiers.
+
+```
+Segment table [table-id] using the hypothesis set.
+Tier by fit strength and data richness.
+```
+
+Claude produces:
+
+| Tier | Criteria | What happens |
+|------|----------|-------------|
+| **Tier 1** | Strong fit + data-rich + clear hook | Personalized email + review |
+| **Tier 2** | Medium fit or data-rich | Templated email |
+| **Tier 3** | Weak fit or missing data | Hold for re-enrichment |
+
+**Typical distribution**: 15% Tier 1, 60% Tier 2, 25% Tier 3.
+
+### Step 6: Find Decision Makers
+
+For Tier 1 + Tier 2 companies, find the right people.
+
+```
+Find decision makers at these companies:
+- VP Sales, Head of Sales
+- Revenue Operations, Sales Operations
+- Marketplace Operations
+Max 3 people per company.
+```
+
+**Output**: Extruct people table with names, roles, LinkedIn URLs. (2 credits per person found)
+
+### Step 7: Get Verified Emails
+
+Enrich LinkedIn profiles with verified emails.
+
+```
+Get verified emails for the people table using Prospeo.
+```
+
+Claude will:
+1. Ask for your Prospeo API key
+2. Run enrichment in batches
+3. Report hit rate (expect 60-80%)
+4. Save to `claude-code-gtm/csv/input/{campaign}/contacts.csv`
+
+<Warning>
+  This step uses external API credits (Prospeo, Fullenrich, etc). Check pricing before running at scale.
+</Warning>
+
+### Step 8: Build Email Prompt
+
+Create a self-contained prompt template for this campaign.
+
+```
+Build an email prompt for this campaign.
+Target: VP Sales at B2B marketplaces
+Angle: Stale supplier data (Hypothesis 1)
+```
+
+Claude reads:
+- Context file (voice, value prop, proof library)
+- Hypothesis set (pain mechanisms, evidence)
+- Enrichment columns (for personalization rules)
+
+And produces: `claude-code-gtm/prompts/{vertical-slug}/en_first_email.md`
+
+### Step 9: Generate Emails
+
+Run the prompt against your contacts CSV.
+
+```
+Generate emails for contacts.csv using the prompt template.
+```
+
+For 150 contacts, expect 5-10 minutes. Output: `claude-code-gtm/csv/output/{campaign}/emails.csv`
+
+**Quality checks**:
+- Word limits respected
+- Enrichment data actually used (not generic)
+- Proof points vary per recipient
+- Example queries are specific to each vertical
+
+### Step 10: Review Tier 1 Emails
+
+For Tier 1 companies, run response simulation.
+
+```
+Simulate prospect review for all Tier 1 emails.
+```
+
+Claude generates a persona (CEO, VP Sales, etc) and reviews each email, flagging:
+- Generic phrasing
+- Weak hooks
+- Confusing value prop
+- Proof points that don't resonate
+
+You can refine and regenerate based on feedback.
+
+### Step 11: Upload to Sequencer
+
+Load finalized emails into your email sequencer.
+
+```
+Upload to Instantly. Campaign name: marketplace-supplier-q1
+```
+
+Claude will:
+1. Map CSV fields to Instantly lead schema
+2. Create or find campaign
+3. Upload leads with dedup
+4. Show pre-send checklist
+
+**Pre-send checklist**:
+- [ ] Email accounts connected and warmed
+- [ ] Sending schedule set (timezone, daily limits)
+- [ ] Custom variables rendering correctly
+- [ ] Unsubscribe link present
+- [ ] Reply handling enabled
+
+<Warning>
+  Claude will NEVER auto-activate your campaign. You must manually review and start it in your sequencer.
+</Warning>
+
+## File Structure After Campaign
+
+```
+claude-code-gtm/
+├── context/
+│   ├── your-company_context.md
+│   └── marketplace-supplier/
+│       ├── hypothesis_set.md
+│       └── sourcing_research.md
+├── prompts/
+│   └── marketplace-supplier/
+│       └── en_first_email.md
+└── csv/
+    ├── input/marketplace-supplier-q1/
+    │   ├── people_linkedin.csv
+    │   └── contacts.csv
+    └── output/marketplace-supplier-q1/
+        └── emails.csv
+```
+
+## After Sending: Feedback Loop
+
+After 1-2 weeks, import campaign results.
+
+```
+Update my context file with campaign results.
+Here's the export from Instantly [attach CSV].
+```
+
+Claude will:
+1. Add a row to Campaign History
+2. Update Active Hypotheses (promote winners, demote losers)
+3. Update Proof Library based on new learnings
+
+This creates a flywheel: each campaign improves the next.
+
+## Next Steps
+
+- [Managing Multiple Verticals](/guides/multi-vertical) - Scale to multiple ICPs
+- [Feedback Loops](/guides/feedback-loops) - Import results to improve campaigns
+- [Environment Setup](/guides/environment-setup) - Configure API credentials
+
+## Troubleshooting
+
+**Low enrichment hit rate (less than 50%)**
+- Tighten your ICP - too broad means low data coverage
+- Try different enrichment prompts
+- Run a second enrichment pass with different agent type
+
+**Low email hit rate (less than 60%)**
+- Try a different contact enrichment provider
+- Run a waterfall (two providers)
+- Focus on larger companies (better data coverage)
+
+**Tier 3 too large (more than 40%)**
+- Add more enrichment columns before segmentation
+- Relax tier thresholds
+- Re-run list building with tighter filters

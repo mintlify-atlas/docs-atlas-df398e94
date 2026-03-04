@@ -1,0 +1,333 @@
+---
+title: 'Managing Multiple Verticals'
+description: 'Scale outbound across different ICPs and market segments using shared context'
+---
+
+# Managing Multiple Verticals
+
+Once you've run your first campaign, you'll want to expand to multiple verticals or ICP segments. This guide shows you how to manage multiple campaigns from one company context.
+
+## One Context, Many Campaigns
+
+GTM Skills uses a two-level structure:
+
+```
+claude-code-gtm/context/
+├── your-company_context.md          ← Global: voice, ICP, proof library
+└── {vertical-slug}/                 ← Per-vertical: research, hypotheses
+    ├── hypothesis_set.md
+    └── sourcing_research.md
+```
+
+**Global context** (one file):
+- Voice rules (sender, tone, banned words)
+- Product value prop and key numbers
+- ICP profiles (all segments)
+- Win cases across all verticals
+- Proof library (mapped to audiences)
+- Campaign history (all campaigns)
+
+**Per-vertical context** (one folder per campaign):
+- Hypothesis set (pain points for this vertical)
+- Sourcing research (data points, statistics)
+- Email prompt templates
+
+This lets you maintain consistent voice and proof points while customizing pain hypotheses per vertical.
+
+## Example: Three Verticals
+
+### Your Product
+**Acme Search**: API-first company search and lookalikes for B2B platforms.
+
+### Your ICPs
+
+| Vertical | ICP | Core Pain |
+|----------|-----|----------|
+| **B2B Marketplaces** | 50-500 employees, US/EU, 2+ years old | Stale supplier data, 15-20% decay/year |
+| **Investment Platforms** | Fintech, Series A+, institutional focus | Deal flow discovery, can't find emerging managers |
+| **Procurement Software** | Enterprise SaaS, 100-1000 employees | Vendor intelligence, competitors lack coverage |
+
+### Context Structure
+
+```
+claude-code-gtm/
+├── context/
+│   ├── acme_context.md              ← Shared voice + proof library
+│   ├── b2b-marketplace/
+│   │   ├── hypothesis_set.md        ← Supplier data decay hypotheses
+│   │   └── sourcing_research.md     ← Marketplace vertical research
+│   ├── investment-platform/
+│   │   ├── hypothesis_set.md        ← Deal flow hypotheses
+│   │   └── sourcing_research.md     ← Fintech vertical research
+│   └── procurement-software/
+│       ├── hypothesis_set.md        ← Vendor intelligence hypotheses
+│       └── sourcing_research.md     ← Procurement vertical research
+├── prompts/
+│   ├── b2b-marketplace/
+│   │   └── en_first_email.md
+│   ├── investment-platform/
+│   │   └── en_first_email.md
+│   └── procurement-software/
+│       └── en_first_email.md
+└── csv/
+    ├── input/
+    │   ├── marketplace-q1/
+    │   ├── investment-q1/
+    │   └── procurement-q1/
+    └── output/
+        ├── marketplace-q1/
+        ├── investment-q1/
+        └── procurement-q1/
+```
+
+## Workflow: Launch a New Vertical
+
+<Steps>
+  <Step title="Research the Vertical">
+    Start with market research to understand the vertical's pain points.
+    
+    ```
+    Research the procurement software vertical.
+    Focus on: vendor intelligence, data coverage, compliance.
+    ```
+    
+    **Output**: `claude-code-gtm/context/procurement-software/sourcing_research.md`
+    
+    Contains:
+    - Market size and growth data
+    - Common workflows and pain points
+    - Competitive landscape
+    - Technology stack patterns
+    - Statistics and benchmarks
+  </Step>
+  
+  <Step title="Generate Hypotheses">
+    Create pain hypotheses for this vertical.
+    
+    ```
+    Generate a hypothesis set for procurement software companies.
+    Use the sourcing research + my context file.
+    ```
+    
+    **Output**: `claude-code-gtm/context/procurement-software/hypothesis_set.md`
+    
+    Example:
+    ```markdown
+    ## Hypothesis 1: Vendor coverage gaps
+    
+    **Pain**: Enterprise procurement tools serve global buyers but vendor 
+    databases skew US/EU (70%+ coverage) with weak APAC/LATAM (30-40%).
+    
+    **Mechanism**: Vendor data sourced from directories that don't index 
+    emerging markets. Buyers can't find local suppliers.
+    
+    **Best fit**: Procurement SaaS serving enterprise customers with 
+    international supply chains.
+    
+    **Evidence**: Coupa, SAP Ariba, and Ivalua customers report 40-60% 
+    manual vendor onboarding for non-US suppliers.
+    ```
+  </Step>
+  
+  <Step title="Build Target List">
+    Find companies in this vertical.
+    
+    ```
+    Find 300 procurement software companies:
+    - B2B SaaS, 100-1000 employees
+    - Serve enterprise buyers
+    - US/EU headquarters
+    ```
+    
+    Use Discovery API for qualified results:
+    ```
+    Discovery query: "B2B procurement software for enterprise buyers. 
+    Must have vendor/supplier management features. Selling to F500 or 
+    similar large companies."
+    
+    Criteria:
+    1. Serves enterprise segment (grade 1-5)
+    2. International customer base (grade 1-5)
+    3. Vendor intelligence features (grade 1-5)
+    
+    Target: 100 results
+    ```
+  </Step>
+  
+  <Step title="Enrich with Vertical-Specific Columns">
+    Add enrichment columns tailored to this vertical.
+    
+    ```
+    Add enrichment columns to table [table-id]:
+    1. Geographic coverage (multiselect: North America, Europe, APAC, LATAM, MEA)
+    2. Primary customer segment (select: SMB, Mid-Market, Enterprise, Mixed)
+    3. Vendor onboarding workflow (text: how they currently add suppliers)
+    4. Recent product launches (text: new features in last 12 months)
+    ```
+  </Step>
+  
+  <Step title="Segment and Generate">
+    Run the rest of the campaign workflow:
+    
+    ```
+    1. Segment table [table-id] using procurement-software hypotheses
+    2. Find decision makers (VP Product, Head of Data, Chief Product Officer)
+    3. Get emails via Prospeo
+    4. Build email prompt for procurement-software vertical
+    5. Generate emails
+    6. Upload to Instantly campaign: procurement-vendor-intelligence-q1
+    ```
+  </Step>
+</Steps>
+
+## Shared Proof Library Strategy
+
+Your proof library lives in the global context file and serves all verticals. Map each proof point to audience and hypothesis.
+
+### Example Proof Library
+
+```markdown
+## Proof Library
+
+| Proof Point | Best Audience | Best Hypothesis | Source Win Case |
+|-------------|---------------|-----------------|----------------|
+| PS. Shopify runs 50K lookalike searches/mo to find acquisition targets in emerging markets. | Investment platforms, Corporate dev | Deal flow discovery | Shopify case study |
+| PS. ThomasNet added our supplier search to their platform and saw 40% more international matches in the first month. | B2B marketplaces, Procurement software | Vendor coverage gaps | ThomasNet partnership |
+| PS. Coupa uses our API to backfill APAC suppliers—saved 200 hours/mo of manual onboarding. | Procurement software | Vendor onboarding efficiency | Coupa integration |
+```
+
+**Selection logic** (in email-prompt-building):
+1. **Peer relevance**: Proof company ≥ prospect size
+2. **Hypothesis alignment**: Proof validates the P1 angle
+3. **Non-redundancy**: Don't repeat stats from P2
+
+This lets you reuse the same proof points across verticals while keeping them contextually relevant.
+
+## Voice Consistency Across Verticals
+
+Voice rules live in the global context and apply to all campaigns.
+
+```markdown
+## Voice
+
+**Sender**: Sarah Chen, Acme Search
+
+**Tone**: Technical peer. Direct, no fluff. Assume the reader is smart.
+
+**Language level**: Use industry terms (API, enrichment, lookalike) without explaining them. Avoid marketing speak.
+
+**Hard constraints**:
+1. No superlatives ("best", "leading", "cutting-edge")
+2. No rhetorical questions
+3. No more than 2 sentences per paragraph
+4. Word limit: 120 words max for 4-paragraph structure
+5. Never say "I noticed" or "I saw" - just state the observation
+
+**Scope boundaries**:
+- We ARE: company search, lookalikes, enrichment API
+- We ARE NOT: CRM, email tool, full GTM platform
+```
+
+Every email prompt reads these rules and applies them, regardless of vertical.
+
+## ICP Profiles: Shared vs. Vertical-Specific
+
+Store all ICP profiles in the global context, even if some are vertical-specific.
+
+```markdown
+## ICP
+
+| Profile | Company Size | Geo | Roles | Vertical |
+|---------|--------------|-----|-------|----------|
+| B2B Marketplace Ops | 50-500 | US/EU | VP Ops, Marketplace Ops, VP Sales | B2B marketplaces |
+| Investment Platform Product | 20-200 | US | VP Product, Head of Data, Founder/CEO | Fintech, Investment |
+| Procurement Software Leadership | 100-1000 | US/EU | VP Product, Chief Product Officer | Enterprise SaaS, Procurement |
+```
+
+This gives you a single source of truth for targeting across all campaigns.
+
+## Campaign History: Cross-Vertical Learnings
+
+Track all campaigns in the global context.
+
+```markdown
+## Campaign History
+
+| Campaign | Vertical | List Size | Reply Rate | Top Hypothesis | Learnings |
+|----------|----------|-----------|------------|----------------|----------|
+| marketplace-q1 | B2B marketplaces | 250 | 8% | Stale supplier data | CEO/founders reply 2x more than VPs |
+| investment-q1 | Investment platforms | 180 | 12% | Deal flow discovery | "Emerging managers" keyword drove 60% of replies |
+| procurement-q1 | Procurement software | 300 | 6% | Vendor coverage gaps | Enterprise segment (1000+ employees) had 3x reply rate |
+```
+
+Cross-vertical patterns emerge:
+- Founder/CEO titles outperform VP titles
+- Specific keywords ("emerging managers", "APAC suppliers") drive engagement
+- Larger companies = better data coverage = higher reply rates
+
+Use these learnings to refine future campaigns across all verticals.
+
+## Scaling: 3 → 10 Verticals
+
+### Month 1-2: Validate 3 Verticals
+
+Run small campaigns (150-200 companies each) in 3 verticals. Track:
+- Reply rate by vertical
+- Hypothesis performance
+- Email structure that works
+
+### Month 3-4: Double Down + Add 2 More
+
+- Scale the best-performing vertical to 500+ companies
+- Add 2 new verticals based on ICP overlap
+- Start building a hypothesis library (patterns that work across verticals)
+
+### Month 5-6: Systematize
+
+- Templatize enrichment column sets ("Standard B2B SaaS enrichment")
+- Build reusable research prompts per vertical category
+- Create hypothesis templates (e.g. "Coverage gap" pattern, "Workflow inefficiency" pattern)
+
+### Month 7+: Scale to 10+ Verticals
+
+At this point you have:
+- Proven email structures per role type
+- Hypothesis library with 20+ validated pain points
+- Enrichment playbooks per vertical category
+- Voice rules refined by 5000+ sent emails
+
+New verticals take 2-3 hours instead of 2-3 days.
+
+## Multi-Vertical Best Practices
+
+<Tip>
+  **Reuse enrichment column prompts**: Once you've built a good "Primary customer segment" prompt, save it as a snippet and reuse across verticals.
+</Tip>
+
+<Tip>
+  **Track hypothesis performance in Campaign History**: Which pain points drive replies? Double down on those.
+</Tip>
+
+<Warning>
+  **Don't over-personalize**: If you have 10 verticals and write 10 completely different email structures, you lose the ability to A/B test. Keep voice and structure consistent, vary only the pain hypothesis.
+</Warning>
+
+<Tip>
+  **Batch vertical launches**: Research and build hypothesis sets for 3 verticals at once, then run campaigns in parallel. This surfaces shared patterns faster.
+</Tip>
+
+## When to Split the Context File
+
+You might need multiple global context files if:
+
+1. **Different brands/products** - If you're running campaigns for two separate products, use two context files
+2. **Radically different ICPs** - If one campaign targets startups and another targets F500, voice and proof points diverge enough to warrant separate contexts
+3. **Different senders** - If Sarah sends to technical buyers and John sends to executives, their voice rules differ
+
+Otherwise, stick with one global context. The per-vertical folders give you enough flexibility.
+
+## Next Steps
+
+- [Feedback Loops](/guides/feedback-loops) - Import campaign results to refine hypotheses
+- [Environment Setup](/guides/environment-setup) - Manage API credentials across verticals
+- [Your First Campaign](/guides/first-campaign) - Review the end-to-end workflow

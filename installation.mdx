@@ -1,0 +1,243 @@
+---
+title: Installation
+description: Install GTM Skills via skills.sh CLI or Claude Code plugin manager
+---
+
+# Installation
+
+GTM Skills can be installed using two methods: the skills.sh CLI or the Claude Code plugin manager. Both methods install the skills to `~/.claude/skills/`, making them globally available across all your projects.
+
+## Prerequisites
+
+Before installing GTM Skills, ensure you have:
+
+- **Claude Code**: Installed and running on your system
+- **Node.js**: Required for the skills.sh CLI method (if using that approach)
+- **Extruct API Token**: Sign up at [extruct.ai](https://www.extruct.ai) to get a free trial token
+
+## Method 1: skills.sh CLI
+
+The [skills.sh](https://skills.sh) CLI is a command-line tool for managing Claude Code skills. This is the recommended method if you're comfortable with terminal commands.
+
+### Installation Steps
+
+<Steps>
+  <Step title="Run the installation command">
+    Open your terminal and run:
+    
+    ```bash
+    npx skills add extruct-ai/gtm-skills
+    ```
+    
+    This command uses npx to run the skills CLI without requiring a global installation.
+  </Step>
+  
+  <Step title="Verify installation">
+    The skills will be installed to `~/.claude/skills/gtm-skills/`. You can verify by checking:
+    
+    ```bash
+    ls ~/.claude/skills/
+    ```
+    
+    You should see `gtm-skills` in the output.
+  </Step>
+  
+  <Step title="Configure environment">
+    Set your Extruct API token as an environment variable:
+    
+    ```bash
+    export EXTRUCT_API_TOKEN="your_token_here"
+    ```
+    
+    Add this to your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.) to persist across sessions.
+  </Step>
+</Steps>
+
+<Info>
+The skills.sh CLI is maintained by Vercel Labs. You can find the source code at [github.com/vercel-labs/skills](https://github.com/vercel-labs/skills).
+</Info>
+
+## Method 2: Claude Code Plugin Manager
+
+The Claude Code plugin manager provides an in-chat interface for installing skills. This method is ideal if you prefer working directly within Claude Code.
+
+### Installation Steps
+
+<Steps>
+  <Step title="Add the marketplace">
+    In Claude Code, run:
+    
+    ```
+    /plugin marketplace add extruct-ai/gtm-skills
+    ```
+    
+    This adds the GTM Skills marketplace to your available plugins.
+  </Step>
+  
+  <Step title="Install the plugin">
+    Next, install the skills:
+    
+    ```
+    /plugin install gtm-skills
+    ```
+    
+    Claude will download and install all skill templates to `~/.claude/skills/`.
+  </Step>
+  
+  <Step title="Configure your API token">
+    Set your Extruct API token:
+    
+    ```bash
+    export EXTRUCT_API_TOKEN="your_token_here"
+    ```
+    
+    You can do this in your terminal or add it to your shell configuration file.
+  </Step>
+</Steps>
+
+<Tip>
+Plugin manager commands work directly in Claude Code chat. No need to switch to a terminal.
+</Tip>
+
+## Where Skills Are Stored
+
+Once installed, skills are stored in:
+
+```
+~/.claude/skills/gtm-skills/
+```
+
+This location makes them globally available across all your projects. You install once and can use the skills in any project directory.
+
+### Skill Structure
+
+The installed skills directory contains:
+
+```
+gtm-skills/
+├── .claude-plugin/
+│   ├── plugin.json
+│   └── marketplace.json
+└── skills/
+    ├── context-building/
+    ├── hypothesis-building/
+    ├── list-building/
+    ├── market-research/
+    ├── enrichment-design/
+    ├── list-enrichment/
+    ├── table-creation/
+    ├── list-segmentation/
+    ├── people-search/
+    ├── email-search/
+    ├── email-prompt-building/
+    ├── email-generation/
+    ├── email-response-simulation/
+    └── campaign-sending/
+```
+
+Each skill directory contains:
+- `SKILL.md` - The skill template with instructions for Claude
+- `references/` - Supporting documentation and API references (where applicable)
+
+## Environment Variables
+
+GTM Skills uses environment variables to authenticate with various services. Only the Extruct API token needs to be set upfront. Other credentials are requested in-chat when the corresponding skill runs.
+
+### Required: Extruct API Token
+
+Set your Extruct API token before using GTM Skills:
+
+```bash
+export EXTRUCT_API_TOKEN="your_token_here"
+```
+
+<Note>
+Get a free trial token with 100 credits at [extruct.ai](https://www.extruct.ai). No credit card required.
+</Note>
+
+### Optional: Additional Integrations
+
+Depending on which skills you use, you may need additional API credentials:
+
+| Variable | Service | Used by |
+|----------|---------|--------|
+| `EXTRUCT_API_TOKEN` | [Extruct API](https://www.extruct.ai/docs) | list-building, list-enrichment, table-creation, people-search, list-segmentation, email-search |
+| Other credentials | Email enrichment, Campaign sending | Requested in-chat when needed |
+
+<Tip>
+You don't need to set all credentials upfront. Claude will ask for them when you use skills that require additional integrations.
+</Tip>
+
+## Verifying Installation
+
+To verify that GTM Skills is installed correctly:
+
+<Steps>
+  <Step title="Check the skills directory">
+    ```bash
+    ls ~/.claude/skills/gtm-skills/skills/
+    ```
+    
+    You should see 14 skill directories.
+  </Step>
+  
+  <Step title="Verify environment variable">
+    ```bash
+    echo $EXTRUCT_API_TOKEN
+    ```
+    
+    This should output your API token.
+  </Step>
+  
+  <Step title="Test with a prompt">
+    In Claude Code, try a simple prompt:
+    
+    ```
+    I'm building www.example.com.
+    Read my website, figure out my ICP,
+    and draft a plan for an outbound campaign.
+    ```
+    
+    If installation was successful, Claude will begin researching and planning your campaign.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Skills Not Found
+
+If Claude doesn't recognize GTM Skills:
+
+1. Verify the installation directory exists: `ls ~/.claude/skills/gtm-skills/`
+2. Restart Claude Code to reload the skills registry
+3. Try reinstalling using one of the methods above
+
+### API Token Issues
+
+If you see authentication errors:
+
+1. Verify your token is set: `echo $EXTRUCT_API_TOKEN`
+2. Check that the token is valid at [extruct.ai](https://www.extruct.ai)
+3. Make sure the environment variable is available in your Claude Code session
+4. Restart your terminal/Claude Code after setting the variable
+
+### Permission Errors
+
+If you encounter permission issues during installation:
+
+1. Ensure you have write permissions to `~/.claude/`
+2. Try running without `sudo` - skills should install to your user directory
+3. Check that Node.js/npx is properly installed (for skills.sh method)
+
+## Next Steps
+
+Now that you've installed GTM Skills:
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Run your first campaign in minutes
+  </Card>
+  <Card title="Skills Overview" icon="grid" href="/skills/overview">
+    Learn about individual skills and how to use them
+  </Card>
+</CardGroup>

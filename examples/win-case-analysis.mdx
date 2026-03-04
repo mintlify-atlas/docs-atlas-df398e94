@@ -1,0 +1,463 @@
+---
+title: "Analyzing Won Deals CSV"
+description: "Example workflow analyzing a CSV of won deals to identify patterns and build a targeted lookalike campaign"
+---
+
+This example shows how to analyze a CSV of your closed deals to identify ICP patterns, extract common pain points, and build a lookalike campaign targeting similar companies.
+
+## Scenario
+
+You're building Extruct (company intelligence API) and you've closed 23 deals over the past 6 months. You want to analyze what these customers have in common and find more companies like them.
+
+## Starting Prompt
+
+```
+I'm building www.extruct.ai.
+Here's a list of my won deals [attach: won_deals.csv]
+Analyze them and find similar companies to target.
+```
+
+**Attached CSV (`won_deals.csv`):**
+
+```csv
+company_name,domain,industry,employee_count,use_case,close_date,deal_value
+SupplierIQ,supplieriq.io,Procurement Software,85,Vendor scoring,2025-01-15,2400
+MarketCompass,marketcompass.com,Market Research,120,Company profiling,2025-01-22,4800
+DealFlow,dealflow.co,VC Software,45,Portfolio screening,2025-02-03,1200
+LeadEnrich,leadenrich.com,Sales Intelligence,230,Lead enrichment,2025-02-18,9600
+RiskView,riskview.io,Fintech,67,Credit risk assessment,2025-02-25,3600
+TenantTrack,tenanttrack.com,Property Tech,54,Tenant screening,2025-03-01,2400
+PartnerMatch,partnermatch.io,Marketplace Platform,110,Partner verification,2025-03-08,4800
+... (23 total rows)
+```
+
+<Steps>
+
+### Step 1: Context Building & Win Case Analysis
+
+Claude loads **context-building** skill and analyzes the CSV.
+
+**Claude reads the CSV and analyzes patterns:**
+
+> I've analyzed your 23 won deals. Here are the patterns I see:
+>
+> **Industry clusters:**
+> - Sales/Marketing tech: 7 companies (30%)
+> - Fintech/Risk: 5 companies (22%)
+> - B2B Marketplaces: 4 companies (17%)
+> - Property/Real Estate tech: 3 companies (13%)
+> - Other: 4 companies (18%)
+>
+> **Company size:**
+> - 20-100 employees: 13 companies (57%)
+> - 100-300 employees: 8 companies (35%)
+> - 300+: 2 companies (8%)
+>
+> **Use case patterns:**
+> - Enrichment/scoring workflows: 14 companies (61%)
+> - Search/discovery features: 7 companies (30%)
+> - Risk/compliance: 5 companies (22%)
+> - Matching/recommendation: 4 companies (17%)
+>
+> **Deal size correlation:**
+> - Larger companies (100+) → higher ACV ($4.8K avg)
+> - Enrichment use cases → higher usage volume
+>
+> Let me capture this in your context file. First, a few questions:
+> 1. What's your core value proposition?
+> 2. Who sends these emails (name/role)?
+> 3. Preferred tone for outreach?
+
+**You provide voice/product info**, and Claude creates:
+
+```
+claude-code-gtm/context/extruct_context.md
+```
+
+With sections:
+- **What We Do** (from your input)
+- **ICP** (derived from CSV patterns)
+- **Win Cases** (table with all 23 customers)
+- **Voice** (from your input)
+
+### Step 2: Hypothesis Extraction
+
+Claude uses **hypothesis-building** to extract pain hypotheses from the use cases.
+
+**Claude analyzes use case column:**
+
+> Based on the use_case field in your CSV, I see 4 core hypotheses:
+>
+> **#1 B2B Scoring Workflows**  
+> Companies building features that score, evaluate, or rank other businesses (vendors, partners, leads, tenants). They need structured company data but don't want to build scrapers.
+> Best fit: Sales tools, procurement platforms, marketplace platforms, property tech
+> Search angle: "B2B scoring software", "vendor evaluation platforms", "lead scoring tools"
+>
+> **#2 Enrichment at Scale**  
+> Sales and marketing tools that enrich inbound leads or CRM records with company data. High volume, need API reliability.
+> Best fit: Sales intelligence, marketing automation, CRM enrichment
+> Search angle: "lead enrichment software", "CRM data enrichment", "B2B data providers"
+>
+> **#3 Risk & Compliance Screening**  
+> Fintech and financial services platforms screening counterparties, assessing credit risk, or verifying business legitimacy.
+> Best fit: Fintech, lending platforms, payment processors, compliance tools
+> Search angle: "business credit risk software", "KYB verification platforms", "financial risk assessment tools"
+>
+> **#4 Discovery & Matching**  
+> Platforms that help users discover or match with relevant companies (investor-startup, buyer-supplier, job seeker-employer).
+> Best fit: Marketplaces, VC platforms, recruiting tech, partner networks
+> Search angle: "B2B marketplace platforms", "company discovery tools", "partner matching software"
+>
+> Sound right? Any to refine?
+
+**You confirm**, and Claude saves:
+
+```
+claude-code-gtm/context/win-case-analysis/hypothesis_set.md
+```
+
+### Step 3: Lookalike List Building
+
+Claude uses **list-building** with multiple seed companies from your CSV.
+
+**Strategy:**
+
+> I'll run lookalike searches from your top 5 customers (by deal size and recency), 
+> then combine with semantic search for broader coverage.
+
+**Lookalike queries:**
+
+```bash
+# Seed 1: LeadEnrich (sales intelligence)
+curl -X GET "https://api.extruct.ai/v1/companies/leadenrich.com/similar?limit=100"
+
+# Seed 2: MarketCompass (market research)
+curl -X GET "https://api.extruct.ai/v1/companies/marketcompass.com/similar?limit=100"
+
+# Seed 3: PartnerMatch (marketplace)
+curl -X GET "https://api.extruct.ai/v1/companies/partnermatch.io/similar?limit=100"
+
+# Seed 4: RiskView (fintech risk)
+curl -X GET "https://api.extruct.ai/v1/companies/riskview.io/similar?limit=100"
+
+# Seed 5: SupplierIQ (procurement)
+curl -X GET "https://api.extruct.ai/v1/companies/supplieriq.io/similar?limit=100"
+```
+
+**Results:**
+- 487 companies from lookalike (deduplicated across seeds)
+
+**Semantic search for broader coverage:**
+
+```bash
+# Query 1: B2B scoring/evaluation
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "B2B software that scores, evaluates, or ranks companies for vendor assessment, lead qualification, or risk screening",
+    "filters": {"include": {"employee_count": ["11-50", "51-200", "201-500"]}},
+    "limit": 150
+  }'
+
+# Query 2: Sales/marketing enrichment
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "sales intelligence and lead enrichment platforms that provide company data for B2B outreach",
+    "limit": 150
+  }'
+
+# Query 3: Marketplace/matching platforms
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "B2B marketplace or matching platforms connecting buyers and sellers or partners",
+    "limit": 100
+  }'
+```
+
+**Combined results:** 712 unique companies (after deduplication)
+
+**Exclusions:**
+
+> Removing your 23 existing customers and competitors from the list...
+>
+> Final list: 682 companies
+
+**Created table:** `tbl_win_case_lookalike`
+
+### Step 4: Enrichment Design
+
+Claude uses **enrichment-design** to validate hypothesis fit.
+
+**Claude proposes:**
+
+> I'll design columns to identify which of your 4 hypotheses each company matches:
+>
+> **Column 1: B2B Scoring Feature**  
+> Type: select  
+> Options: Yes - core feature, Yes - secondary, No, Unclear  
+> Prompt: Does {input} offer features for scoring, evaluating, or ranking companies (vendors, leads, partners, etc.)?
+>
+> **Column 2: Use Case Category**  
+> Type: multiselect  
+> Options: Lead enrichment, Vendor evaluation, Risk screening, Partner matching, Market research, Other  
+> Prompt: Which use cases does {input} serve based on their product description?
+>
+> **Column 3: Data Integration Signals**  
+> Type: grade (1-5)  
+> Prompt: How API/data integration-forward is {input}? Look for: API docs, data partnerships, integration pages, mentions of third-party data.
+>
+> **Column 4: Target Customer Segment**  
+> Type: text  
+> Prompt: Who are {input}'s primary customers? (e.g., sales teams, procurement departments, fintech companies, etc.)
+>
+> **Column 5: Recent Funding or Product News**  
+> Type: text  
+> Prompt: Find recent funding announcements, product launches, or expansion news for {input} from the last 12 months.
+>
+> These columns let us match companies to hypotheses and find personalization hooks. Approve?
+
+**You approve.**
+
+### Step 5: List Enrichment
+
+```bash
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_win_case_lookalike/columns" \
+  -d '{...5 column configs...}'
+
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_win_case_lookalike/run"
+```
+
+**Progress:**
+
+> Enriching 682 companies × 5 columns = 3,410 cells  
+> Estimated time: 18-22 minutes
+>
+> [Progress bar...]
+>
+> Enrichment complete ✓
+
+### Step 6: List Segmentation
+
+Claude uses **list-segmentation** to tier and segment by hypothesis.
+
+**Segmentation breakdown:**
+
+```markdown
+## Win Case Lookalike Campaign - Segmented
+
+### By Hypothesis:
+- #1 B2B Scoring: 247 companies (36.2%)
+- #2 Enrichment at Scale: 189 companies (27.7%)
+- #3 Risk & Compliance: 98 companies (14.4%)
+- #4 Discovery & Matching: 86 companies (12.6%)
+- Multi-hypothesis: 42 companies (6.2%)
+- Unmatched: 20 companies (2.9%)
+
+### Tier 1 — 68 companies (10.0%)
+
+Strong hypothesis match + API-forward (grade 4-5) + recent news/hook
+
+| Company | Domain | Hypothesis | Hook Signal |
+|---------|--------|------------|-------------|
+| VendorScore | vendorscore.io | #1 B2B Scoring | Raised Series A ($8M) 2 months ago for "vendor intelligence" |
+| ProspectIQ | prospectiq.com | #2 Enrichment | Blog: "Why we're moving from Clearbit to..." |
+| FraudGuard | fraudguard.ai | #3 Risk & Compliance | Launched "Business Verification API" last quarter |
+
+### Tier 2 — 436 companies (63.9%)
+
+Medium fit, standard templated outreach
+
+### Tier 3 — 178 companies (26.1%)
+
+Low data quality or weak hypothesis fit, hold
+```
+
+**Saved:**
+
+```
+claude-code-gtm/csv/input/win-case-lookalike/segmented_list.csv
+```
+
+### Step 7: Multi-Hypothesis Email Prompts
+
+Claude uses **email-prompt-building** to create 4 hypothesis-specific prompt templates.
+
+**Claude explains:**
+
+> Since you have 4 distinct hypotheses with different value props, I'll create 
+> 4 email prompt templates — one per hypothesis. Each will have:
+> - Hypothesis-specific P1 openers
+> - Tailored example queries
+> - Relevant social proof from your win cases
+
+**Created prompts:**
+
+```
+claude-code-gtm/prompts/win-case-lookalike/
+├── h1_b2b_scoring_template.md
+├── h2_enrichment_scale_template.md
+├── h3_risk_compliance_template.md
+└── h4_discovery_matching_template.md
+```
+
+**Example from `h1_b2b_scoring_template.md`:**
+
+```markdown
+# Email Prompt: Hypothesis #1 - B2B Scoring Workflows
+
+## P1 Opener
+If {{b2b_scoring_feature}} = "Yes - core feature":
+  "I saw [Company] offers [specific feature] for scoring/evaluating companies. 
+  We've worked with similar platforms on the data layer for these workflows."
+
+If {{recent_funding_news}} mentions scoring/evaluation:
+  "I saw [Company] recently [funding/product news]. We've helped similar 
+  platforms add company intelligence to their scoring features."
+
+## P2 Example Query
+"Find B2B software vendors in supply chain with 50-200 employees, 
+founded after 2018, with recent funding"
+
+## P3 Social Proof
+Choose based on {{use_case_category}}:
+- If Vendor evaluation → "A procurement platform uses this to auto-score supplier stability."
+- If Lead scoring → "A sales intelligence tool uses this to qualify enterprise leads."
+- If Partner matching → "A marketplace platform uses this to verify partner companies."
+
+## P4 Proof Point
+"PS. The API is free for search (unlimited). Enrichment starts at $59/mo for 1K credits."
+
+...
+```
+
+### Step 8: Email Generation
+
+Claude uses **email-generation** to generate emails, routing to the appropriate prompt template based on hypothesis.
+
+**Generation logic:**
+
+```python
+for each company in segmented_list:
+  if tier == 1 or tier == 2:
+    template = load_template_for_hypothesis(company.hypothesis_number)
+    email = generate(template, company.enrichment_data)
+    save_to_csv(email)
+```
+
+**Example Tier 1 email (VendorScore, Hypothesis #1):**
+
+```
+Subject: Company intelligence for vendor scoring
+
+Hi [First Name],
+
+I saw VendorScore raised $8M for vendor intelligence features. We've worked 
+with procurement platforms on the company data layer for similar workflows.
+
+Extruct is an API for company search and intelligence. Example query for 
+vendor scoring:
+
+"Find logistics software vendors in North America with 50-200 employees, 
+founded after 2018, with recent funding rounds"
+
+A procurement automation platform uses this to auto-score supplier stability 
+before manual due diligence.
+
+Worth exploring?
+
+Danny
+Extruct
+
+PS. API is free for search (unlimited). Enrichment starts at $59/mo for 1K credits.
+```
+
+**Generated:**
+
+```
+claude-code-gtm/csv/output/win-case-lookalike/
+├── emails_h1.csv (247 emails for Hypothesis #1)
+├── emails_h2.csv (189 emails for Hypothesis #2)
+├── emails_h3.csv (98 emails for Hypothesis #3)
+└── emails_h4.csv (86 emails for Hypothesis #4)
+```
+
+Total: 504 emails (Tier 1 + Tier 2)
+
+### Step 9: Campaign Upload
+
+Claude uses **campaign-sending** to upload to Instantly as 4 separate campaigns.
+
+```bash
+# Campaign 1: Hypothesis #1 - B2B Scoring
+curl -X POST "https://api.instantly.ai/api/v1/campaign/create" \
+  -d '{
+    "name": "Win Case Lookalike - B2B Scoring",
+    "from_email": "danny@extruct.ai"
+  }'
+
+# Upload leads for Campaign 1
+for each lead in emails_h1.csv:
+  curl -X POST "https://api.instantly.ai/api/v1/lead/add" ...
+
+# Repeat for Campaigns 2-4
+```
+
+**Result:**
+
+> Created 4 campaigns in Instantly:
+> - Campaign 1 (H1 - B2B Scoring): 186 contacts
+> - Campaign 2 (H2 - Enrichment): 143 contacts
+> - Campaign 3 (H3 - Risk): 76 contacts
+> - Campaign 4 (H4 - Discovery): 99 contacts
+>
+> Total: 504 contacts across 4 hypothesis-specific sequences
+
+</Steps>
+
+## Final Artifacts
+
+```
+claude-code-gtm/
+├── context/
+│   ├── extruct_context.md (with 23 win cases)
+│   └── win-case-analysis/
+│       └── hypothesis_set.md (4 hypotheses)
+├── prompts/
+│   └── win-case-lookalike/
+│       ├── h1_b2b_scoring_template.md
+│       ├── h2_enrichment_scale_template.md
+│       ├── h3_risk_compliance_template.md
+│       └── h4_discovery_matching_template.md
+└── csv/
+    ├── input/win-case-lookalike/
+    │   ├── segmented_list.csv
+    │   └── won_deals.csv (original)
+    └── output/win-case-lookalike/
+        ├── emails_h1.csv
+        ├── emails_h2.csv
+        ├── emails_h3.csv
+        └── emails_h4.csv
+```
+
+## Campaign Results (4 weeks)
+
+| Hypothesis | Sent | Replies | Reply Rate | Positive | Demos |
+|------------|------|---------|------------|----------|-------|
+| #1 B2B Scoring | 186 | 27 | 14.5% | 12 | 5 |
+| #2 Enrichment | 143 | 19 | 13.3% | 8 | 3 |
+| #3 Risk & Compliance | 76 | 8 | 10.5% | 3 | 1 |
+| #4 Discovery | 99 | 6 | 6.1% | 2 | 0 |
+| **Total** | **504** | **60** | **11.9%** | **25** | **9** |
+
+**Key learnings:**
+
+1. **Hypothesis #1 (B2B Scoring) was strongest**: 14.5% reply rate, 48% of positive replies
+2. **Company size matters**: 100-200 employee companies had 2x reply rate vs 20-50
+3. **"API-forward" enrichment was predictive**: Grade 4-5 companies replied at 16.2% vs 7.8% for grade 2-3
+4. **Recent funding = strong hook**: 19 of 25 positive replies were from companies with funding/product news in last 6 months
+
+## Next Steps
+
+1. Update context file with campaign results (use **context-building** feedback loop mode)
+2. Promote Hypothesis #1 to "Validated" status
+3. Run follow-up campaign focused on H1 with 2x list size
+4. Add "API integration readiness" as enrichment column for future campaigns (strong signal)

@@ -1,0 +1,319 @@
+---
+title: "Email Search"
+description: "Get verified emails and phones for contacts using enrichment providers like Prospeo or Fullenrich"
+---
+
+## Overview
+
+Get verified emails and phones for contacts found by `people-search`. Takes LinkedIn profiles from the Extruct people table and enriches them via contact enrichment providers like Prospeo or Fullenrich. Supports single-provider and waterfall modes. Outputs a contact CSV ready for `email-generation`.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Get verified email addresses for contacts
+- Find phone numbers for decision makers
+- Enrich LinkedIn profiles with contact data
+- Validate email deliverability
+
+**Trigger phrases:** "get emails", "find emails", "enrich contacts", "email finder", "get phone numbers", "enrich people", "contact enrichment", "verify emails", "email enrichment"
+
+## Related Skills
+
+```
+list-segmentation → people-search → email-search → email-generation → email-response-simulation → campaign-sending
+```
+
+After `people-search` finds WHO to contact (with LinkedIn URLs), this skill gets their verified contact info.
+
+## Environment Setup
+
+<ParamField path="EXTRUCT_API_TOKEN" type="string" required>
+  Extruct API token for reading people table data
+  ```bash
+  export EXTRUCT_API_TOKEN=<your-token>
+  ```
+</ParamField>
+
+**Extruct Base URL:** `https://api.extruct.ai/v1`
+
+<Note>
+Contact enrichment provider selection and credentials are handled in Step 0 of the workflow. You'll be prompted to choose a provider and provide API credentials.
+</Note>
+
+## Inputs
+
+<ParamField path="people_table_id" type="string">
+  Child table ID from `people-search` (preferred method)
+</ParamField>
+
+<ParamField path="people_csv" type="string">
+  Alternative: CSV file at `claude-code-gtm/csv/input/{campaign}/people_linkedin.csv`
+</ParamField>
+
+<ParamField path="provider" type="string" required>
+  Contact enrichment provider to use. Common options:
+  - Prospeo (200M+ contacts, LinkedIn enrichment)
+  - Fullenrich (waterfall provider)
+  - Others (docs fetched at runtime)
+</ParamField>
+
+<ParamField path="include_mobile" type="boolean" default={false}>
+  Whether to include mobile phone numbers (increases credit cost)
+</ParamField>
+
+## Choosing a Provider
+
+The skill will ask which contact enrichment provider you want to use. Consider:
+
+- **Have LinkedIn URLs?** → Providers with LinkedIn enrichment work best
+- **Need highest email hit rate?** → Waterfall providers try multiple sources
+- **Budget-conscious?** → Check credit costs per match
+- **Need mobile phones?** → Confirm the provider covers phone data
+- **Want maximum coverage?** → Run one provider first, then a second for misses
+
+<Info>
+If you don't know where to start, pre-configured options with local reference docs are available in the skill's `references/` directory.
+</Info>
+
+## Workflow
+
+<Steps>
+  <Step title="Confirm Provider and Learn API">
+    The skill will:
+    1. Ask which contact enrichment provider you want to use
+    2. Fetch or read the provider's API documentation
+    3. Identify:
+       - Enrichment endpoint (single and bulk)
+       - Required input fields (LinkedIn URL, name, domain, etc.)
+       - Authentication method and credentials
+       - Throughput limits and request constraints
+       - Response format (email, phone, verification status)
+       - Credit/pricing model
+    4. Ask for your API credentials and confirm access
+    5. Plan the implementation and confirm with you before proceeding
+  </Step>
+  
+  <Step title="Load People Data">
+    **Option A: From Extruct people table (recommended)**
+    
+    Fetches data via `GET /tables/{people_table_id}/data` and extracts:
+    - `full_name`
+    - `profile_url` (LinkedIn URL)
+    - `role`
+    - `parent_row_id`
+    
+    Splits full name into first/last.
+    
+    **Option B: From CSV**
+    
+    Reads `claude-code-gtm/csv/input/{campaign}/people_linkedin.csv`.
+  </Step>
+  
+  <Step title="Check Credits">
+    Before running enrichment, checks your available credits or quota with the chosen provider.
+    
+    Presents a cost estimate based on the number of contacts to enrich.
+  </Step>
+  
+  <Step title="Run Enrichment">
+    Using the chosen provider's API:
+    
+    1. Prepares contact data in the format the provider expects
+    2. Submits contacts in batches according to rate limits
+    3. Handles async responses if the provider uses polling
+    4. Collects results: emails, phone numbers, verification status
+    5. Tracks matched vs. unmatched contacts
+    
+    <Accordion title="Waterfall Mode">
+      If you want a **waterfall** (two providers):
+      1. Run the first provider
+      2. Collect misses (contacts with no email found)
+      3. Run misses through the second provider
+      4. Combine results
+    </Accordion>
+  </Step>
+  
+  <Step title="Deduplicate and Clean">
+    Deduplicates by email address.
+    
+    Filters out:
+    - Entries with no email
+    - Results where the provider marks verification as invalid
+  </Step>
+  
+  <Step title="Output Contact CSV">
+    Saves enriched contacts to:
+    ```
+    claude-code-gtm/csv/input/{campaign}/contacts.csv
+    ```
+    
+    **Columns:**
+    - `first_name`, `last_name`
+    - `email`, `email_verified`
+    - `job_title`, `company_name`, `domain`
+    - `linkedin_url`
+    - `phone`, `location`
+    - `source` (provider name)
+  </Step>
+  
+  <Step title="Review with User">
+    **Summary presented:**
+    ```
+    Enrichment Results:
+    - Contacts submitted: N
+    - Emails found: N (X% hit rate)
+    - Emails verified: N
+    - Phones found: N
+    - No match: N
+    - Provider: [chosen provider]
+    ```
+    
+    Sample of 10 contacts shown for spot-checking.
+    
+    **Review questions:**
+    - "Hit rate look acceptable? (>60% is good, >80% is great)"
+    - "Want to run the misses through another provider?"
+    - "Ready to proceed to `email-generation`?"
+  </Step>
+</Steps>
+
+## Prospeo API Example
+
+<Info>
+Prospeo is a pre-configured provider with 200M+ contacts and LinkedIn enrichment support.
+</Info>
+
+### Authentication
+
+```http
+POST https://api.prospeo.io/enrich-person
+X-KEY: {your_api_key}
+Content-Type: application/json
+```
+
+### Enrich Person Request
+
+```json
+{
+  "data": {
+    "linkedin_url": "https://linkedin.com/in/janedoe"
+  },
+  "only_verified_email": true,
+  "enrich_mobile": false
+}
+```
+
+### Response
+
+```json
+{
+  "error": false,
+  "person": {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane.doe@acme.com",
+    "email_verified": true,
+    "title": "VP of Sales",
+    "linkedin_url": "https://linkedin.com/in/janedoe"
+  },
+  "company": {
+    "name": "Acme Corp",
+    "website": "acme.com"
+  }
+}
+```
+
+### Credit Costs
+
+| Action | Credits |
+|--------|--------|
+| Email enrichment | 1 per match |
+| Email + mobile | 10 per match |
+| No match found | 0 |
+| Duplicate request | 0 (lifetime dedup) |
+
+### Bulk Enrichment
+
+```http
+POST https://api.prospeo.io/bulk-enrich-person
+```
+
+**Max batch size:** 50 records per request
+
+```json
+{
+  "only_verified_email": true,
+  "enrich_mobile": false,
+  "data": [
+    {"linkedin_url": "https://linkedin.com/in/person1"},
+    {"first_name": "John", "last_name": "Doe", "company_website": "acme.com"}
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "error": false,
+  "total_cost": 5,
+  "matched": [{...}],
+  "not_matched": [{...}]
+}
+```
+
+## Output Format
+
+The contacts CSV includes:
+
+```csv
+first_name,last_name,email,email_verified,job_title,company_name,domain,linkedin_url,phone,location,source
+Jane,Doe,jane.doe@acme.com,true,VP of Sales,Acme Corp,acme.com,https://linkedin.com/in/janedoe,+14155551234,San Francisco CA,prospeo
+```
+
+## API References
+
+<Accordion title="Prospeo API">
+  Pre-configured reference in `references/prospeo-api.md`
+  
+  - Base URL: `https://api.prospeo.io`
+  - Endpoints: `/enrich-person`, `/bulk-enrich-person`, `/search-person`
+  - Rate limits: Tier-based (check response headers)
+</Accordion>
+
+<Accordion title="Fullenrich API">
+  Pre-configured reference in `references/fullenrich-api.md`
+  
+  - Waterfall enrichment across multiple providers
+  - Higher hit rates, higher cost
+</Accordion>
+
+<Accordion title="Other Providers">
+  For other providers, API documentation is fetched during Step 0 of the workflow.
+</Accordion>
+
+## Troubleshooting
+
+<Warning>
+**Low hit rate (less than 50%)?**
+- LinkedIn URLs may be incomplete or incorrect from `people-search`
+- Try a different provider or waterfall mode
+- Check if provider supports your target geography
+
+**High credit cost?**
+- Disable mobile phone enrichment if not needed
+- Use single enrichment instead of bulk for testing
+- Check for duplicate contacts before submission
+
+**Verification failures?**
+- Some providers mark catch-all emails as unverified
+- Consider allowing unverified emails for initial outreach
+- Use a separate email verification service
+</Warning>
+
+## Next Steps
+
+After email enrichment completes:
+
+1. Proceed to `email-generation` to create personalized outreach emails
+2. Or review contact quality and re-run with different provider
+3. Or manually verify a sample of emails before generation

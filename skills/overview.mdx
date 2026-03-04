@@ -1,0 +1,133 @@
+---
+title: Skills Overview
+description: Complete reference for all 15 GTM Skills - reusable prompt templates for outbound campaigns
+---
+
+GTM Skills are reusable prompt templates for Claude Code that cover the full outbound campaign workflow: research, list building, enrichment, segmentation, email generation, and sending. Each skill works independently - use one or combine several.
+
+<Note>
+These skills are templates. They show one way to run GTM workflows using Extruct and Claude Code. Fork them, adapt to your workflow, swap out the tools you don't use. The skill patterns are the value, the specific vendor integrations are up to you.
+</Note>
+
+## All Skills
+
+| Skill | Description | Triggers |
+|-------|-------------|----------|
+| **context-building** | Build and maintain a global company context file that all other GTM skills read from. Captures product info, voice rules, ICP, win cases, proof library, campaign history, hypotheses, and DNC lists. | "company context", "update context", "build context", "ICP", "win cases", "campaign history", "call recording", "feedback loop", "DNC list" |
+| **hypothesis-building** | Generate testable pain hypotheses from the company context file (ICP, win cases, product knowledge) and user input. Fast, no API keys needed - pure reasoning. | "build hypotheses", "hypothesis set", "pain hypotheses", "define hypotheses", "what pain points", "campaign angles", "search angles", "refine hypotheses" |
+| **list-building** | Build targeted company lists for outbound campaigns using the Extruct API. Find companies matching an ICP, build prospect lists, search by description, discover market segments. | "find companies", "build a list", "company search", "prospect list", "target accounts", "outbound list", "discover companies", "ICP search", "lookalike search", "seed company" |
+| **market-research** | Research a target vertical's pain points using deep research APIs and distill findings into a numbered hypothesis set. Pure industry education tool - decoupled from email generation. | "deep research", "hypothesis set", "research pain points", "research vertical", "sourcing research", "pain mapping", "industry problems", "market research", "educate me on" |
+| **enrichment-design** | Design enrichment columns that bridge research hypotheses to list enrichment. Two modes: segmentation (columns that score hypothesis fit) and personalization (company-specific hooks). | "data points", "enrichment columns", "column design", "what to research", "data point builder", "build columns", "segmentation columns", "personalization columns" |
+| **list-enrichment** | Add research-powered enrichment columns to Extruct company tables via the API. Run column configs from enrichment-design, add custom data points, monitor enrichment progress. | "enrich", "add column", "add data point", "research column", "enrich table", "enrichment", "add a field", "run enrichment", "monitor enrichment" |
+| **table-creation** | Create an Extruct company table from user-provided data, upload rows, and optionally add enrichment columns. Handles the full flow from CSV/pasted list to enriched table. | "create table", "upload companies", "add to extruct", "new extruct table", "import companies", "upload list to extruct" |
+| **list-segmentation** | Tier companies by hypothesis fit + data richness. Creates Tier 1 (high-fit, high-signal), Tier 2 (medium-fit), and Tier 3 (low-fit) segments for targeted outreach. | "segment list", "tier companies", "prioritize companies", "score companies", "rank list", "segment by fit", "create tiers" |
+| **people-search** | Find LinkedIn profiles via Extruct People Finder API. Search by role, department, seniority at target companies. Returns names, titles, LinkedIn URLs. | "find people", "people search", "find contacts", "LinkedIn search", "find decision makers", "find roles", "people finder" |
+| **email-search** | Get verified emails + phones via contact enrichment providers (Prospeo, FullEnrich). Supports single lookups and bulk enrichment. | "find email", "email search", "verify email", "find contacts", "contact enrichment", "get phone number", "bulk email lookup" |
+| **email-prompt-building** | Build self-contained prompt template for a campaign. Combines context file (voice, proof points), hypothesis set, and email structure into a reusable template. | "build email prompt", "create prompt template", "email template", "prompt builder", "campaign prompt" |
+| **email-generation** | Generate emails from prompt + CSV (tier-aware). Personalizes openers per hypothesis, applies voice rules, includes proof points. Outputs ready-to-send CSV. | "generate emails", "write emails", "create email copy", "personalize emails", "email generation", "draft emails" |
+| **email-response-simulation** | Simulate prospect reading your email (Tier 1 review). Quality check before sending - tests clarity, relevance, and value prop alignment. | "simulate response", "review email", "test email", "persona review", "email QA", "response simulation" |
+| **campaign-sending** | Upload leads for sequencing and sending via email sequencing platforms (Instantly). Handles CSV formatting, deduplication, and campaign setup. | "send campaign", "upload to instantly", "campaign sending", "sequence setup", "upload leads" |
+
+## Workflow Patterns
+
+### Full Campaign Flow
+
+<Steps>
+  <Step title="Build Context">
+    Use `context-building` to capture your ICP, voice, proof points, and win cases in a global context file.
+  </Step>
+  <Step title="Define Hypotheses">
+    Use `hypothesis-building` (fast) or `market-research` (deep) to generate pain hypotheses for your target vertical.
+  </Step>
+  <Step title="Build List">
+    Use `list-building` to find companies matching your ICP via Search, Discovery, or Lookalike.
+  </Step>
+  <Step title="Design Enrichment">
+    Use `enrichment-design` to define what data points to research about each company.
+  </Step>
+  <Step title="Enrich Data">
+    Use `list-enrichment` to add research columns to your company table.
+  </Step>
+  <Step title="Segment">
+    Use `list-segmentation` to tier companies by hypothesis fit and data richness.
+  </Step>
+  <Step title="Find People">
+    Use `people-search` to identify decision makers at target companies.
+  </Step>
+  <Step title="Get Contacts">
+    Use `email-search` to find verified emails and phone numbers.
+  </Step>
+  <Step title="Build Prompt">
+    Use `email-prompt-building` to create a reusable email template.
+  </Step>
+  <Step title="Generate Emails">
+    Use `email-generation` to create personalized emails from your prompt + data.
+  </Step>
+  <Step title="Review">
+    Use `email-response-simulation` to QA a sample of Tier 1 emails.
+  </Step>
+  <Step title="Send">
+    Use `campaign-sending` to upload leads to your sequencing platform.
+  </Step>
+</Steps>
+
+### Quick Starts
+
+**From your website:**
+```
+I'm building www.example.com.
+Read my website, figure out my ICP,
+and draft a plan for an outbound campaign.
+```
+
+**From a win case:**
+```
+I'm building www.example.com.
+One of my customers is www.customer.com,
+they use us to score suppliers.
+Find similar companies and plan a campaign.
+```
+
+**From won deals CSV:**
+```
+I'm building www.example.com.
+Here's a list of my won deals [attach CSV].
+Analyze them and find similar companies to target.
+```
+
+## Campaign Artifacts
+
+Skills automatically create a `claude-code-gtm/` directory with all intermediate files:
+
+```
+claude-code-gtm/
+├── context/
+│   ├── {company}_context.md          ← ICP, voice, proof points
+│   └── {vertical-slug}/             ← per-vertical research + hypotheses
+├── prompts/
+│   └── {vertical-slug}/             ← email prompt templates
+└── csv/
+    ├── input/{campaign-slug}/       ← segmented lists, people, contacts
+    └── output/{campaign-slug}/      ← generated emails
+```
+
+## Environment Variables
+
+Only the Extruct API token needs to be set upfront. Other providers' credentials are requested in-chat when the corresponding skill runs.
+
+| Variable | Service | Used by |
+|----------|---------|----------|
+| `EXTRUCT_API_TOKEN` | [Extruct API](https://www.extruct.ai/docs) | list-building, list-enrichment, table-creation, people-search, list-segmentation, email-search |
+
+## About Extruct
+
+[Extruct](https://www.extruct.ai): API-first company search and lookalikes engine.
+
+**Core capabilities:**
+- **Instant Search**: semantic company search (free, unlimited)
+- **Lookalike Search**: find companies similar to your best accounts (free, unlimited)
+- **Deep Search**: AI-powered discovery with criteria scoring (1 credit/match)
+- **AI Tables**: research any data point per company with AI agents (1 credit/cell)
+- **People Finder**: find decision makers with LinkedIn profiles (2 credits/cell)
+
+**Pricing:** from $59/mo for 1K credits. Free trial with 100 credits. See [extruct.ai/pricing](https://www.extruct.ai/pricing).

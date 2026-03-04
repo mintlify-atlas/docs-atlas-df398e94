@@ -1,0 +1,365 @@
+---
+title: "Starting from a Seed Company"
+description: "Example workflow analyzing a single win-case customer to find similar companies and build an outbound campaign"
+---
+
+This example shows how to start from a single successful customer, analyze what makes them a good fit, and build a targeted outbound campaign to similar companies.
+
+## Scenario
+
+You're building a company intelligence API (like Extruct), and you have one customer — a procurement automation company that uses your API to score potential suppliers. You want to find more companies like them.
+
+## Starting Prompt
+
+```
+I'm building www.extruct.ai.
+One of my customers is www.customer-example.com,
+they use us to score suppliers in their procurement workflow.
+Find similar companies and plan a campaign.
+```
+
+<Steps>
+
+### Step 1: Context Building
+
+Claude loads the **context-building** skill and starts gathering information about your product and ICP.
+
+**Claude asks:**
+
+> I'll help you build a campaign starting from this win case. First, let me capture some context.
+> 
+> 1. What's your product's core value proposition?
+> 2. Who typically sends these emails (name/role)?
+> 3. What tone do you prefer for outreach?
+> 4. Any words or phrases you never want to use?
+
+**You provide:**
+
+- Product: API-first company search and lookalike engine
+- Sender: Danny from Extruct
+- Tone: Builder-to-builder, analytical, no hype
+- Banned words: "agents", "revolutionize", "game-changing"
+
+**Claude creates:**
+
+```
+claude-code-gtm/
+└── context/
+    └── extruct_context.md
+```
+
+The context file includes your win case, product info, voice rules, and ICP profile derived from the successful customer.
+
+### Step 2: Hypothesis Building
+
+Claude uses the **hypothesis-building** skill to identify why this customer is a good fit and what pain points your product solves for them.
+
+**Claude analyzes:**
+
+> Based on this win case, I see a few hypothesis angles:
+> 
+> 1. **Procurement data gap** — companies scoring vendors need company intelligence that's not in their CRM
+> 2. **Build vs buy for APIs** — teams building features that need company data
+> 3. **Legacy data quality** — companies frustrated with stale or incomplete vendor databases
+>
+> Does this match your understanding? Any angles to add or adjust?
+
+**You confirm**, and Claude saves:
+
+```
+claude-code-gtm/
+└── context/
+    ├── extruct_context.md
+    └── procurement-automation/
+        └── hypothesis_set.md
+```
+
+### Step 3: List Building
+
+Claude uses the **list-building** skill in lookalike mode, starting from your seed customer's domain.
+
+**Claude runs:**
+
+```bash
+# Lookalike search from seed company
+curl -X GET "https://api.extruct.ai/v1/companies/customer-example.com/similar?limit=100" \
+  -H "Authorization: Bearer $EXTRUCT_API_TOKEN"
+```
+
+**Results:** 94 similar companies found
+
+**Claude also runs semantic search** for broader coverage:
+
+```bash
+# Query 1: Procurement workflow automation
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -H "Authorization: Bearer $EXTRUCT_API_TOKEN" \
+  -d '{
+    "q": "procurement automation software that helps companies evaluate and score suppliers",
+    "limit": 100
+  }'
+
+# Query 2: Vendor management platforms  
+curl -X GET "https://api.extruct.ai/v1/companies/search" \
+  -d '{
+    "q": "vendor management and supplier qualification platforms",
+    "limit": 100
+  }'
+```
+
+**Combined results:** 267 unique companies (after deduplication)
+
+**Claude creates an Extruct table:**
+
+```bash
+# Create table
+curl -X POST "https://api.extruct.ai/v1/tables" \
+  -d '{
+    "name": "Procurement Automation - Seed Campaign",
+    "kind": "company"
+  }'
+
+# Upload domains in batches
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_abc123/rows" \
+  -d '{
+    "rows": [
+      {"data": {"input": "domain1.com"}},
+      {"data": {"input": "domain2.com"}}
+    ]
+  }'
+```
+
+**Output:**
+
+> Created table `tbl_abc123` with 267 companies. View at: https://app.extruct.ai/tables/tbl_abc123
+
+### Step 4: Enrichment Design
+
+Claude uses **enrichment-design** to propose research columns aligned with your hypotheses.
+
+**Claude proposes:**
+
+> I'll design enrichment columns to validate hypothesis fit:
+>
+> **Column 1: Vendor Evaluation Workflow**  
+> Type: select  
+> Options: Manual process, Basic tools, Automated platform, No formal process  
+> Why: Confirms procurement sophistication
+>
+> **Column 2: Data Integration Signals**  
+> Type: text  
+> Prompt: Check if {input} mentions API integrations, data enrichment, or third-party data in their product description
+> Why: Shows if they're already comfortable with API-based solutions
+>
+> **Column 3: Recent Procurement News**  
+> Type: text  
+> Prompt: Find recent news or announcements from {input} about procurement, vendor management, or supplier qualification features
+> Why: Timing signal for outreach
+
+**You approve**, and Claude generates the column configs.
+
+### Step 5: List Enrichment
+
+Claude uses **list-enrichment** to add the designed columns to your table.
+
+**Claude runs:**
+
+```bash
+# Add enrichment columns
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_abc123/columns" \
+  -d '{
+    "kind": "agent",
+    "name": "Vendor Evaluation Workflow",
+    "key": "vendor_workflow",
+    "value": {
+      "agent_type": "research_pro",
+      "prompt": "Research {input} and categorize their vendor evaluation process...",
+      "output_format": "select",
+      "labels": ["Manual process", "Basic tools", "Automated platform", "No formal process"]
+    }
+  }'
+
+# Trigger enrichment
+curl -X POST "https://api.extruct.ai/v1/tables/tbl_abc123/run"
+```
+
+**Progress:**
+
+> Enriching 267 companies across 3 columns...
+> Estimated time: 8-10 minutes
+> 
+> Status: 89/267 complete...
+> Status: 178/267 complete...
+> Status: 267/267 complete ✓
+
+### Step 6: List Segmentation
+
+Claude uses **list-segmentation** to tier companies by fit and data quality.
+
+**Segmentation results:**
+
+```markdown
+## Segmented List: Procurement Automation Campaign
+
+### Tier 1 — 31 companies (11.6%)
+
+Strong hypothesis fit + rich enrichment data + clear hook
+
+| Company | Domain | Hypothesis | Hook Signal |
+|---------|--------|------------|-------------|
+| VendorMatch | vendormatch.io | #1 Procurement data gap | CEO quoted on "lack of real-time vendor intelligence" |
+| SupplyCore | supplycore.com | #1 Procurement data gap | Launched supplier scoring feature last month |
+| ProcureIQ | procureiq.com | #2 Build vs buy | Job posting for "API Integration Engineer" |
+
+### Tier 2 — 164 companies (61.4%)
+
+Medium fit or data-rich without standout hook
+
+### Tier 3 — 72 companies (27.0%)
+
+Weak fit or insufficient data
+```
+
+**Claude saves:**
+
+```
+claude-code-gtm/csv/input/procurement-seed-campaign/segmented_list.csv
+```
+
+### Step 7: Email Prompt Building
+
+Claude uses **email-prompt-building** to create a self-contained prompt template.
+
+**Claude reads:**
+- Context file (voice, value prop, proof points)
+- Hypothesis set
+- Enrichment column definitions
+
+**Claude builds:**
+
+```markdown
+# Email Prompt: Procurement Automation Campaign
+
+## Voice Rules
+- Sender: Danny from Extruct
+- Tone: Builder-to-builder, analytical
+- Language: B2 English, simple sentences
+- Banned: agents, revolutionize, game-changing
+
+## Structure
+P1: Personalized opener referencing {{vendor_workflow}} or {{procurement_news}}
+P2: Value prop + example query relevant to procurement use case
+P3: Social proof from similar company
+P4: Proof point (choose based on hypothesis)
+
+## Hypothesis Mapping
+- If vendor_workflow = "Automated platform" → use #1 Procurement data gap angle
+- If mentions API in description → use #2 Build vs buy angle
+
+...
+```
+
+**Saved to:**
+
+```
+claude-code-gtm/prompts/procurement-automation/email_template.md
+```
+
+### Step 8: Email Generation
+
+Claude uses **email-generation** to create personalized emails for Tier 1 and templated emails for Tier 2.
+
+**For Tier 1 company (VendorMatch):**
+
+```
+Subject: Company intelligence for supplier scoring
+
+Hi [First Name],
+
+I saw your recent comments about the lack of real-time vendor intelligence 
+in procurement workflows. We've seen similar challenges with teams building 
+supplier scoring features.
+
+Extruct is an API for company search and data. You can query companies by 
+description and get structured profiles. Example:
+
+"Find B2B software vendors in supply chain with 50-200 employees founded 
+after 2015"
+
+A procurement platform similar to VendorMatch uses this to auto-score vendors 
+their customers are evaluating.
+
+Worth a look?
+
+Danny
+Extruct
+
+PS. The API is free for search (unlimited), $59/mo for 1K enrichment credits.
+```
+
+**Output file:**
+
+```
+claude-code-gtm/csv/output/procurement-seed-campaign/emails.csv
+```
+
+Columns: `first_name`, `last_name`, `email`, `company_name`, `subject`, `email_body`, `tier`, `hypothesis`
+
+### Step 9: Review & Send
+
+**Tier 1 Review (optional):**
+
+For your 31 Tier 1 emails, Claude can use **email-response-simulation** to simulate how the recipient might read the email.
+
+**Campaign Upload:**
+
+Claude uses **campaign-sending** skill to upload to your sequencer (e.g., Instantly).
+
+```bash
+# Upload to Instantly via API
+curl -X POST "https://api.instantly.ai/api/v1/lead/add" \
+  -d '{
+    "api_key": "$INSTANTLY_API_KEY",
+    "campaign_id": "camp_xyz",
+    "email": "person@vendormatch.io",
+    "first_name": "...",
+    "variables": {...}
+  }'
+```
+
+**Result:**
+
+> Uploaded 195 contacts to Instantly campaign "Procurement Seed Campaign"
+> - Tier 1: 31 contacts (Sequence A - personalized)
+> - Tier 2: 164 contacts (Sequence B - templated)
+> - Tier 3: Held for re-enrichment
+
+</Steps>
+
+## Final Artifacts
+
+```
+claude-code-gtm/
+├── context/
+│   ├── extruct_context.md
+│   └── procurement-automation/
+│       └── hypothesis_set.md
+├── prompts/
+│   └── procurement-automation/
+│       └── email_template.md
+└── csv/
+    ├── input/procurement-seed-campaign/
+    │   └── segmented_list.csv
+    └── output/procurement-seed-campaign/
+        └── emails.csv
+```
+
+## Campaign Results
+
+After running the campaign for 2 weeks:
+
+- **Tier 1**: 31 sent, 8 replies (25.8% reply rate), 4 positive
+- **Tier 2**: 164 sent, 12 replies (7.3% reply rate), 3 positive
+- **Top hypothesis**: #1 Procurement data gap (9 of 11 positive replies)
+
+Next step: Update context file with campaign results using the **context-building** skill in feedback loop mode.

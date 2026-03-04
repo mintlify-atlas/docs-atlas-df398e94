@@ -1,0 +1,332 @@
+---
+title: "Campaign Sending"
+description: "Upload finalized emails to sequencing platforms like Instantly for sending"
+---
+
+## Overview
+
+Upload finalized emails for sequencing and sending. Maps fields to lead schema, creates or finds campaigns, uploads leads with dedup, and provides a pre-send verification checklist.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Upload emails to your sequencer
+- Start a new outreach campaign
+- Load contacts into your sending platform
+- Push generated emails to production
+
+**Trigger phrases:** "upload to instantly", "run instantly", "send emails", "instantly campaign", "push to instantly", "start campaign", "load into instantly"
+
+## Environment Setup
+
+<Note>
+Provider selection and credentials are handled in Step 0 of the workflow. You'll be prompted to choose an email sequencing provider and provide API credentials.
+</Note>
+
+## Workflow
+
+<Steps>
+  <Step title="Confirm Provider and Learn API">
+    The skill will:
+    1. Ask which email sequencing provider you want to use (e.g., Instantly, Smartlead, etc.)
+    2. Fetch or read the provider's API documentation
+    3. Identify:
+       - Campaign/sequence creation endpoint
+       - Lead upload endpoint and schema
+       - Deduplication options
+       - Custom variable / personalization support
+       - Authentication method and credentials
+       - Throughput limits and upload constraints
+    4. Ask for your API credentials and confirm access
+    5. Plan the field mapping based on the provider's lead schema and confirm with you before proceeding
+    
+    <Info>
+    Pre-configured options with local reference docs are available in `references/` for common providers.
+    </Info>
+  </Step>
+  
+  <Step title="Read and Analyze Final Emails">
+    Load the finalized email CSV (output from `email-generation`).
+    
+    **Actions:**
+    - Read CSV headers to discover all available columns
+    - Verify required columns exist: `email`, `first_name`, `company_name`, `company_domain`
+    - Identify all content columns (paragraph fields, hypothesis, tier, etc.) that will need to be mapped to the provider's variables
+  </Step>
+  
+  <Step title="Check DNC List">
+    Read the context file and remove any domains on the DNC (Do Not Contact) list.
+    
+    Reports how many were removed.
+  </Step>
+  
+  <Step title="Create or Find Campaign">
+    Using the chosen provider's API:
+    - List existing campaigns
+    - Create a new campaign if needed (suggests name based on vertical + date)
+    
+    You'll be asked: "Use an existing campaign or create a new one?"
+  </Step>
+  
+  <Step title="Map Fields to Provider Lead Schema">
+    Analyze the CSV headers discovered in Step 1 and create corresponding fields in the provider:
+    
+    1. Map `email`, `first_name`, `last_name`, `company_name`, `company_domain` to the provider's standard lead fields
+    2. For every remaining column in the CSV, create a matching custom variable / personalization field in the provider
+    3. Present the full mapping to you and confirm before uploading
+    
+    <Accordion title="Example Field Mapping (Instantly)">
+      **CSV Columns → Instantly Fields:**
+      
+      | CSV Column | Instantly Field | Type |
+      |------------|-----------------|------|
+      | `email` | `email` | Standard |
+      | `first_name` | `first_name` | Standard |
+      | `last_name` | `last_name` | Standard |
+      | `company_name` | `company_name` | Standard |
+      | `company_domain` | `website` | Standard |
+      | `p1` | `personalization` | Custom |
+      | `p2` | `second_paragraph` | Custom |
+      | `p3` | `third_paragraph` | Custom |
+      | `p4` | `fourth_paragraph` | Custom |
+      | `hypothesis` | `hypothesis` | Custom |
+    </Accordion>
+  </Step>
+  
+  <Step title="Upload Leads in Batches">
+    Upload via the provider's API in batches (respects rate limits from Step 0).
+    
+    Enables deduplication if the provider supports it.
+    
+    **Reports:**
+    - Uploaded count
+    - Skipped (dedup) count
+    - Total attempted
+  </Step>
+  
+  <Step title="Pre-Send Verification Checklist">
+    Present this checklist to you BEFORE you activate the campaign:
+    
+    ```markdown
+    ## Pre-Send Verification Checklist
+    
+    Campaign: [name]
+    Leads uploaded: [N]
+    Leads skipped (dedup): [N]
+    
+    ### Verify in your sequencer:
+    
+    - [ ] **Email accounts connected** — at least 2-3 sending accounts are linked and warmed
+    - [ ] **Sending schedule set** — check timezone, sending hours, daily limits
+    - [ ] **Email sequence configured** — first email + follow-up(s) are set up in the campaign
+    - [ ] **Custom variables working** — preview 3-5 emails to confirm {{variables}} render correctly
+    - [ ] **Unsubscribe link present** — required for compliance
+    - [ ] **DNC list checked** — confirm no blacklisted domains made it through
+    - [ ] **Reply handling set** — auto-stop sequence on reply is enabled
+    - [ ] **Warmup active** — sending accounts have adequate warmup history
+    
+    ### Sample emails to spot-check:
+    
+    [Shows 3 random emails from the upload for visual verification]
+    ```
+  </Step>
+  
+  <Step title="Remind About Manual Activation">
+    <Warning>
+    **Never auto-activate a campaign.** Always tell you:
+    
+    > "Leads are uploaded. Please review the campaign in your sequencer, check the sequence and sending settings, then manually activate when ready. I will not start the campaign automatically."
+    </Warning>
+  </Step>
+</Steps>
+
+## Instantly API Example
+
+<Info>
+Instantly is a pre-configured provider with API reference in `references/instantly-api.md`.
+</Info>
+
+### Authentication
+
+```bash
+export INSTANTLY_API_KEY=<your-api-key>
+```
+
+**Base URL:** `https://api.instantly.ai/api/v2`
+
+**Auth:** Bearer token in Authorization header
+
+### Create Campaign
+
+```http
+POST /campaigns
+Authorization: Bearer {INSTANTLY_API_KEY}
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "name": "PE Rollup - Blue Collar - 2026-03"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "campaign-uuid",
+  "name": "PE Rollup - Blue Collar - 2026-03"
+}
+```
+
+### Upload Leads
+
+```http
+POST /leads
+Authorization: Bearer {INSTANTLY_API_KEY}
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "campaign_id": "campaign-uuid",
+  "skip_if_in_workspace": true,
+  "leads": [
+    {
+      "email": "jane@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "company_name": "Acme Corp",
+      "personalization": "First paragraph text here",
+      "website": "acme.com",
+      "custom_variables": {
+        "second_paragraph": "...",
+        "third_paragraph": "...",
+        "fourth_paragraph": "...",
+        "hypothesis": "Database blind spot"
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "uploaded": 95,
+  "skipped": 5
+}
+```
+
+### Deduplication Options
+
+| Option | Behavior |
+|--------|----------|
+| `skip_if_in_workspace: true` | Skip if email exists in ANY campaign |
+| `skip_if_in_campaign: true` | Skip only if in THIS campaign |
+| Default (both false) | Always upload |
+
+**Batch size:** Max 100 leads per request
+
+### Rate Limits
+
+- 10 requests per second
+- 100 leads per upload request
+- Add 0.5s pause between consecutive uploads
+
+### Email Template in Instantly
+
+In the Instantly email template editor, reference custom variables as:
+
+```
+Hey {{first_name}},
+
+{{personalization}}
+
+{{second_paragraph}}
+
+{{third_paragraph}}
+
+{{fourth_paragraph}}
+```
+
+This maps cleanly to the P1-P4 structure from `email-generation`.
+
+## After Sending: Feedback Loop
+
+After the campaign has been running (typically 1-2 weeks), run the feedback loop:
+
+<Steps>
+  <Step title="Export Results">
+    Export results from the sequencer:
+    - Opens
+    - Replies
+    - Bounces
+    - Interested / Not interested
+    - Meetings booked
+  </Step>
+  
+  <Step title="Update Campaign History">
+    Run `context-building` in feedback loop mode to update Campaign History
+  </Step>
+  
+  <Step title="Refine Hypotheses">
+    Use results to refine hypotheses and improve future campaigns:
+    - Which hypotheses got the most replies?
+    - Which proof points resonated?
+    - Which CTAs drove meetings?
+    - What was the overall reply rate per tier?
+  </Step>
+</Steps>
+
+## API References
+
+<Accordion title="Instantly API">
+  Pre-configured reference in `references/instantly-api.md`
+  
+  - Base URL: `https://api.instantly.ai/api/v2`
+  - Endpoints: `/campaigns`, `/leads`, `/campaigns/{id}/analytics/overview`
+  - Authentication: Bearer token
+  - Rate limits: 10 req/s, 100 leads/batch
+</Accordion>
+
+<Accordion title="Other Providers">
+  For other email sequencing providers, API documentation is fetched during Step 0 of the workflow.
+</Accordion>
+
+## Troubleshooting
+
+<Warning>
+**Upload failures?**
+- Check API credentials are correct
+- Verify required fields are present in CSV
+- Check rate limits and batch size constraints
+- Confirm campaign ID is valid
+
+**Custom variables not rendering?**
+- Verify field mapping in Step 4
+- Check that email template uses correct variable names
+- Preview emails in sequencer to test variable substitution
+
+**High dedup rate?**
+- Check if leads were previously uploaded to another campaign
+- Verify deduplication settings match your intent
+- Consider using campaign-level dedup instead of workspace-level
+
+**Leads not sending?**
+- Campaign may not be activated
+- Check sending schedule and timezone
+- Verify email accounts are connected and warmed
+- Check daily sending limits
+</Warning>
+
+## Next Steps
+
+After campaign upload completes:
+
+1. Review the campaign in your sequencer
+2. Preview 3-5 emails to verify variable rendering
+3. Check sending schedule and limits
+4. Manually activate the campaign when ready
+5. Monitor results and prepare for feedback loop after 1-2 weeks

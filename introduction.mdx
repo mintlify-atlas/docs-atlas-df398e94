@@ -1,0 +1,117 @@
+---
+title: Introduction
+description: Overview of GTM Skills - reusable prompt templates for running outbound campaigns with Claude Code
+---
+
+# Introduction to GTM Skills
+
+GTM Skills is a collection of reusable prompt templates for Claude Code, Anthropic's agentic coding tool. This skill pack covers complete outbound campaigns: research, list building, enrichment, segmentation, email generation, and sending.
+
+## What is GTM Skills?
+
+GTM Skills provides building blocks for outbound campaigns that work with Claude Code. Each skill is a self-contained template that you can use independently or combine with others. There's no required sequence - pick the skills you need for your workflow.
+
+The skills cover:
+- **Research**: Build ICP context and generate pain hypotheses
+- **List Building**: Find companies via Search, Discovery, or Lookalike
+- **Enrichment**: Add custom research columns to company tables
+- **Segmentation**: Tier companies by hypothesis fit and data richness
+- **Email Generation**: Create personalized outbound emails at scale
+- **Campaign Sending**: Upload leads for sequencing and sending
+
+<Note>
+These skills are templates. They show one way to run GTM workflows using Extruct and Claude Code. Fork them, adapt to your workflow, swap out the tools you don't use. The skill patterns are the value, the specific vendor integrations are up to you.
+</Note>
+
+## Key Concepts
+
+### Skills as Building Blocks
+
+Each skill works independently. You can use one skill or combine several to create a complete campaign workflow. The skills handle:
+
+- **Context Building**: Maintain global context files with ICP, voice, proof points, and DNC lists
+- **Hypothesis Building**: Generate pain hypotheses from your context and knowledge
+- **Market Research**: Research vertical pain points via deep research APIs
+- **List Building**: Find target companies using search and lookalike algorithms
+- **Enrichment Design**: Design custom enrichment columns for segmentation and personalization
+- **List Enrichment**: Add research columns to your company tables
+- **Table Creation**: Create tables, upload rows, and manage columns
+- **List Segmentation**: Tier companies by hypothesis fit and data richness
+- **People Search**: Find LinkedIn profiles for decision makers
+- **Email Search**: Get verified emails and phone numbers
+- **Email Prompt Building**: Build self-contained prompt templates for campaigns
+- **Email Generation**: Generate tier-aware emails from prompts and CSVs
+- **Email Response Simulation**: Simulate prospect reviews of your emails
+- **Campaign Sending**: Upload leads for sequencing and sending
+
+### Global Availability
+
+Once installed, skills are stored in `~/.claude/skills/` and become globally available across all your projects. Install once, use everywhere.
+
+### Campaign Artifacts
+
+Skills automatically create a `claude-code-gtm/` directory structure with all intermediate files:
+
+```
+claude-code-gtm/
+├── context/
+│   ├── {company}_context.md          ← ICP, voice, proof points
+│   └── {vertical-slug}/             ← per-vertical research + hypotheses
+├── prompts/
+│   └── {vertical-slug}/             ← email prompt templates
+└── csv/
+    ├── input/{campaign-slug}/       ← segmented lists, people, contacts
+    └── output/{campaign-slug}/      ← generated emails
+```
+
+## Who is GTM Skills For?
+
+### Sales and Marketing Teams
+
+GTM Skills is designed for teams running outbound campaigns who want to:
+- Automate research and list building
+- Generate personalized emails at scale
+- Maintain consistent ICP context across campaigns
+- Segment prospects by fit and data richness
+
+### RevOps and Growth Teams
+
+Growth teams can use GTM Skills to:
+- Test new market segments quickly
+- Build lookalike audiences from won deals
+- Design custom enrichment for better targeting
+- Simulate email responses before sending
+
+### Founders and Early-Stage Teams
+
+Startups benefit from GTM Skills by:
+- Starting campaigns from website analysis or win cases
+- Building hypothesis-driven outbound without large teams
+- Iterating on messaging with response simulation
+- Running complete campaigns with minimal manual work
+
+## Powered by Extruct
+
+GTM Skills integrates with [Extruct](https://www.extruct.ai), an API-first company search and lookalikes engine.
+
+**Core capabilities:**
+- **Instant Search**: Semantic company search (free, unlimited)
+- **Lookalike Search**: Find companies similar to your best accounts (free, unlimited)
+- **Deep Search**: AI-powered discovery with criteria scoring (1 credit/match)
+- **AI Tables**: Research any data point per company with AI agents (1 credit/cell)
+- **People Finder**: Find decision makers with LinkedIn profiles (2 credits/cell)
+
+<Info>
+Pricing starts from $59/mo for 1K credits. Free trial includes 100 credits. See [extruct.ai/pricing](https://www.extruct.ai/pricing) for details.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with your first campaign in minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed installation instructions
+  </Card>
+</CardGroup>

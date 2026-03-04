@@ -1,0 +1,240 @@
+---
+title: Context Building
+description: Build and maintain a global company context file that all other GTM skills read from
+---
+
+One global context file per company. Every other GTM skill reads from this file for voice, value prop, ICP, win cases, proof points, and campaign learnings.
+
+## Trigger Phrases
+
+"company context", "update context", "build context", "ICP", "win cases", "campaign history", "call recording", "feedback loop", "DNC list"
+
+## Context File Location
+
+```
+claude-code-gtm/context/{company}_context.md
+```
+
+Single file per company, not per-campaign. All skills reference this path.
+
+## Modes
+
+### Mode 1: Create
+
+Use when no context file exists yet. Walk the user through each section.
+
+<Steps>
+  <Step title="Check for existing context">
+    Check if `claude-code-gtm/context/{company}_context.md` exists.
+  </Step>
+  <Step title="Gather sections">
+    If not, ask the user for each section (one at a time or in bulk):
+
+    | Section | What to ask | Example |
+    |---------|------------|----------|
+    | What We Do | Product one-liner, core value prop, email-safe value prop, key lingo, key numbers | Product description + quantifiable claims |
+    | Voice | Sender name, tone, language level, hard constraints, scope boundaries | Who emails come from, how they sound |
+    | ICP | Customer profiles, company sizes, roles, geographies | Target profiles with size ranges and regions |
+    | Win Cases | Past customers, why they bought, what worked | Concrete outcomes with metrics |
+    | Proof Library | Pre-written PS sentences for emails, mapped to audience and hypothesis | Ready-to-paste proof points |
+    | Campaign History | Past campaigns: vertical, list size, reply rate, learnings | (empty on first run) |
+    | Active Hypotheses | Current working hypotheses about what resonates | Pain points validated by campaign data |
+    | Do Not Contact | Domains to skip in all future lists | Competitors, partners, opt-outs |
+  </Step>
+  <Step title="Write the file">
+    Write the file using the context schema structure.
+  </Step>
+</Steps>
+
+#### Key sections to get right
+
+**What We Do** - must include:
+- Product one-liner
+- Core value prop (internal version, can use any language)
+- Email-safe value prop (outreach-friendly version of the value prop)
+- Key numbers (quantifiable claims - database size, speed benchmarks, coverage stats)
+- Key lingo (internal terms and definitions)
+
+**Voice** - must include:
+- Sender name and company (who emails come from)
+- Tone (1 sentence)
+- Language level
+- Hard constraints (numbered list of rules)
+- Scope boundaries (what the product IS and ISN'T)
+
+**Proof Library** - must include:
+- Full PS sentences ready to paste into emails
+- Each mapped to: best audience, best hypothesis, source win case
+- Every proof point must trace back to a real win case
+- Write the sentence as it would appear in the email (including "PS.")
+
+### Mode 2: Update
+
+Use when context file exists and user wants to add or modify a section.
+
+<Steps>
+  <Step title="Read existing context">
+    Read the existing context file.
+  </Step>
+  <Step title="Ask what to update">
+    Common updates:
+    - Add a new win case
+    - Add a campaign result
+    - Update ICP based on new learnings
+    - Add domains to DNC
+    - Revise or add hypotheses
+    - Add or update proof points in the Proof Library
+    - Update voice rules
+    - Update key numbers (e.g., database size grew)
+  </Step>
+  <Step title="Append to section">
+    Append to the relevant section. Never overwrite existing entries - add new rows to tables, new bullets to lists.
+  </Step>
+</Steps>
+
+### Mode 3: Call Recording Capture
+
+Use when the user pastes a call transcript or meeting notes.
+
+<Steps>
+  <Step title="Read the transcript">
+    Read the transcript or meeting notes.
+  </Step>
+  <Step title="Extract and categorize signals">
+    - **ICP signals** - who was on the call, their role, company size, what they care about
+    - **Win case data** - what resonated, what they said about their current workflow, pain points confirmed
+    - **Proof point candidates** - specific results or quotes that could become Proof Library entries
+    - **DNC signals** - any companies or domains mentioned as off-limits
+    - **Hypothesis validation** - which existing hypotheses were confirmed or refuted
+    - **Voice feedback** - any reaction to tone, language, or positioning that should update Voice rules
+  </Step>
+  <Step title="Present extracted signals">
+    Present extracted signals to the user for confirmation.
+  </Step>
+  <Step title="Update context file">
+    Update the context file with confirmed signals.
+  </Step>
+</Steps>
+
+### Mode 4: Feedback Loop
+
+Use when importing campaign results from your email sequencer (e.g. Instantly) or manual tracking.
+
+<Steps>
+  <Step title="Read campaign results">
+    Read campaign results (CSV, pasted data, or email sequencer export e.g. Instantly).
+  </Step>
+  <Step title="Extract metrics">
+    - Campaign name, vertical, list size
+    - Open rate, reply rate, positive reply rate
+    - Top-performing hypotheses (which P1 angles got replies)
+    - Patterns in positive vs negative replies
+  </Step>
+  <Step title="Add to Campaign History">
+    Add a new row to the `## Campaign History` table.
+  </Step>
+  <Step title="Update Active Hypotheses">
+    Update based on results:
+    - Promote hypotheses with high reply rates to Validated
+    - Demote hypotheses that didn't resonate to Retired
+    - Note any new hypotheses suggested by reply patterns
+  </Step>
+  <Step title="Update Proof Library">
+    Update if campaign results surfaced new proof points:
+    - New win cases → write new PS sentences
+    - Existing proof points that didn't resonate → add notes or remove
+  </Step>
+</Steps>
+
+## Cross-Skill References
+
+This context file is consumed by:
+- `hypothesis-building` - reads ICP, Win Cases, and product value prop to generate pain hypotheses
+- `email-prompt-building` - reads Voice, What We Do, Proof Library, and Active Hypotheses to build prompt templates
+- `email-generation` - reads the prompt template (which was built from this file)
+- `list-building` - reads ICP and Win Cases for seed companies
+- `market-research` - reads ICP and hypotheses for research scope
+- `enrichment-design` - reads hypotheses for segmentation column design
+- `list-segmentation` - reads hypotheses for tiering logic
+- `email-response-simulation` - reads Voice rules to constrain rewrites
+- `campaign-sending` - reads DNC list for exclusions
+
+## DNC List Population
+
+<Info>
+When building the Do Not Contact section, offer to:
+1. Run an Extruct search for competitors to auto-populate
+2. Accept a CSV of existing customers/partners
+</Info>
+
+## Example Context Structure
+
+```markdown
+# Company Context: [Company Name]
+
+## What We Do
+
+**One-liner:** [Product description in one sentence]
+
+**Core value prop:** [Internal version]
+
+**Email-safe value prop:** [Outreach-friendly version]
+
+**Key numbers:**
+- [Metric 1]: [Value]
+- [Metric 2]: [Value]
+
+**Key lingo:**
+- [Term]: [Definition]
+
+## Voice
+
+**Sender:** [Name, Company]
+
+**Tone:** [One sentence]
+
+**Language level:** [Technical/Business/Casual]
+
+**Hard constraints:**
+1. [Rule 1]
+2. [Rule 2]
+
+**Scope boundaries:**
+- IS: [What the product does]
+- ISN'T: [What it doesn't do]
+
+## ICP
+
+| Profile | Company Size | Roles | Geography |
+|---------|-------------|-------|----------|
+| [Profile 1] | [Range] | [Roles] | [Regions] |
+
+## Win Cases
+
+| Company | Why They Bought | Outcome |
+|---------|----------------|----------|
+| [Company] | [Trigger] | [Result] |
+
+## Proof Library
+
+| PS Sentence | Best Audience | Best Hypothesis | Source Win Case |
+|------------|--------------|----------------|----------------|
+| PS. [Sentence] | [Audience] | [Hypothesis] | [Company] |
+
+## Campaign History
+
+| Campaign | Vertical | List Size | Reply Rate | Learnings |
+|---------|---------|----------|-----------|----------|
+| [Name] | [Vertical] | [Count] | [%] | [Notes] |
+
+## Active Hypotheses
+
+| Hypothesis | Status | Evidence |
+|-----------|--------|----------|
+| [Name] | [Validated/Testing/Retired] | [Data] |
+
+## Do Not Contact
+
+- competitor1.com
+- partner1.com
+```

@@ -1,0 +1,392 @@
+---
+title: 'Campaign Feedback Loops'
+description: 'Import campaign results to improve future performance through validated hypotheses and proof points'
+---
+
+# Campaign Feedback Loops
+
+The best campaigns get better over time. This guide shows you how to import campaign results back into your context file to refine hypotheses, update proof points, and improve future campaigns.
+
+## The Feedback Loop
+
+```
+Campaign → Results → Context Update → Better Hypotheses → Next Campaign
+```
+
+Every campaign teaches you:
+- Which pain points resonate (hypothesis validation)
+- Which proof points drive replies (proof library tuning)
+- Which roles engage (ICP refinement)
+- Which email structures work (voice evolution)
+
+## When to Run Feedback Loop
+
+Import results after your campaign has run for **1-2 weeks** with at least **50 sends**.
+
+Earlier than that: not enough signal.
+
+You need:
+- Open rate data
+- Reply data (positive, negative, neutral)
+- Bounces and unsubscribes
+- Which hypothesis/tier each email used
+
+## Data Sources
+
+You can import from:
+
+1. **Email sequencer exports** (Instantly, Smartlead, Lemlist)
+2. **Manual tracking** (spreadsheet with opens/replies)
+3. **Pasted reply threads** (for qualitative analysis)
+
+### Instantly Export
+
+Go to your campaign → Export leads → Download CSV with:
+- Email address
+- Campaign status (Completed, Active, Paused)
+- Lead status (Interested, Not Interested, No Reply)
+- Email opened (Yes/No)
+- Replied (Yes/No)
+
+### Smartlead Export
+
+Campaigns → Select campaign → Export → Include:
+- Lead details
+- Sequence stats
+- Reply status
+
+## Workflow: Import Results
+
+<Steps>
+  <Step title="Trigger Feedback Loop Mode">
+    Ask Claude to run context-building in feedback loop mode.
+    
+    ```
+    Update my context file with campaign results.
+    Campaign: marketplace-supplier-q1
+    Here's the export from Instantly [attach CSV]
+    ```
+    
+    Or paste results directly:
+    ```
+    Import campaign results to my context file:
+    
+    Campaign: marketplace-supplier-q1
+    Vertical: B2B marketplaces
+    List size: 250
+    Emails sent: 220
+    Opens: 132 (60%)
+    Replies: 18 (8%)
+    Positive replies: 12 (67% of replies)
+    
+    Top hypothesis: #1 Stale supplier data (14/18 replies)
+    Bounces: 15
+    Unsubscribes: 3
+    ```
+  </Step>
+  
+  <Step title="Claude Extracts Metrics">
+    Claude reads your data and extracts:
+    
+    - Campaign name, vertical, list size
+    - Open rate, reply rate, positive reply rate
+    - Which hypotheses got replies (from tier/hypothesis columns in your emails CSV)
+    - Patterns in positive vs negative replies
+    - Any new pain points mentioned in replies
+  </Step>
+  
+  <Step title="Update Campaign History">
+    Claude adds a new row to `## Campaign History` in your context file.
+    
+    ```markdown
+    | Campaign | Vertical | List Size | Reply Rate | Top Hypothesis | Learnings |
+    |----------|----------|-----------|------------|----------------|----------|
+    | marketplace-q1 | B2B marketplaces | 250 | 8% | #1 Stale supplier data | CEO/founders 2x reply rate vs VPs. "Profile decay" keyword drove engagement. |
+    ```
+  </Step>
+  
+  <Step title="Validate or Retire Hypotheses">
+    Claude updates `## Active Hypotheses` based on performance.
+    
+    **Promote to Validated**:
+    ```markdown
+    ### Hypothesis 1: Stale supplier data ✓ VALIDATED
+    
+    **Performance**: 8% reply rate across 220 sends (marketplace-q1)
+    
+    **What worked**: "15-20% profile decay per year" stat resonated. 
+    CEO/founder replies mentioned rebrand/acquisition scenarios.
+    
+    **Refinement**: Focus on 2+ year old marketplaces. Younger platforms 
+    don't feel this pain yet.
+    ```
+    
+    **Demote to Retired**:
+    ```markdown
+    ### Hypothesis 3: Search latency ✗ RETIRED
+    
+    **Performance**: 0 replies across 40 sends (marketplace-q1)
+    
+    **Why it failed**: Too technical for sales/ops roles. May work for 
+    engineering audience but not current ICP.
+    ```
+  </Step>
+  
+  <Step title="Update Proof Library">
+    If campaign results surface new proof points, Claude adds them.
+    
+    New win case from a reply:
+    ```markdown
+    | Proof Point | Best Audience | Best Hypothesis | Source |
+    |-------------|---------------|-----------------|--------|
+    | PS. BuildZoom (10K suppliers) uses our API to refresh profiles quarterly—cut support tickets by 30%. | B2B marketplaces | Stale supplier data | BuildZoom (won via marketplace-q1) |
+    ```
+    
+    Remove proof points that didn't resonate:
+    ```markdown
+    ~~PS. Fortune 500 companies use our search API.~~ 
+    (Too generic, 0 replies in 3 campaigns)
+    ```
+  </Step>
+  
+  <Step title="Extract New Hypotheses from Replies">
+    If replies mention pain points you didn't predict, Claude surfaces them.
+    
+    Example reply:
+    > "Interesting timing—we're actually struggling with duplicate suppliers 
+    > in our database. Same company, 3 different profiles because of name 
+    > variations. Do you handle entity resolution?"
+    
+    Claude suggests:
+    ```markdown
+    ### Hypothesis 5: Duplicate supplier profiles (NEW)
+    
+    **Pain**: Marketplaces accumulate duplicate company records due to name 
+    variations ("Acme Inc", "Acme Corp", "Acme Corporation").
+    
+    **Mechanism**: Manual onboarding + poor entity resolution = data bloat.
+    
+    **Evidence**: Mentioned in 3 replies from marketplace-q1.
+    
+    **Status**: TESTING - add to next campaign
+    ```
+  </Step>
+</Steps>
+
+## What Gets Updated
+
+Feedback loop mode touches these sections in your context file:
+
+| Section | Update Logic |
+|---------|-------------|
+| **Campaign History** | Add new row with metrics + learnings |
+| **Active Hypotheses** | Promote (validated), demote (retired), or add (new from replies) |
+| **Proof Library** | Add new proof points from wins, remove non-performers |
+| **ICP** | Refine role targeting based on reply patterns |
+| **Voice** | Update hard constraints if replies indicate confusion |
+
+## Analyzing Replies: Positive vs Negative
+
+### Positive Reply Patterns
+
+Look for:
+- **Pain confirmation**: "Yes, we see this problem"
+- **Detail requests**: "How does your API work?"
+- **Timing signals**: "Interesting timing, we're evaluating..."
+- **Forward/intro offers**: "Let me connect you with our VP Product"
+
+**What to extract**:
+- Which hypothesis they confirmed
+- Language they used (add to hypothesis description)
+- Any new pain points they mentioned
+
+### Negative Reply Patterns
+
+Look for:
+- **Irrelevant**: "We don't have this problem"
+- **Wrong persona**: "You should talk to [different role]"
+- **Timing**: "Not a priority right now"
+- **Competitive**: "We built this in-house"
+
+**What to extract**:
+- Hypothesis mismatch (refine targeting)
+- Role mismatch (update ICP)
+- Positioning issues (update voice/value prop)
+
+## Example: Full Feedback Loop
+
+### Campaign Results
+
+```
+Campaign: procurement-vendor-intelligence-q1
+Vertical: Procurement software
+Sent: 180 emails
+Opens: 95 (53%)
+Replies: 11 (6%)
+Positive: 7 (64%)
+```
+
+### Breakdown by Hypothesis
+
+| Hypothesis | Sends | Replies | Reply Rate |
+|-----------|-------|---------|------------|
+| #1 Vendor coverage gaps (APAC/LATAM) | 80 | 8 | 10% |
+| #2 Vendor onboarding efficiency | 60 | 2 | 3% |
+| #3 Compliance data gaps | 40 | 1 | 2.5% |
+
+### Breakdown by Role
+
+| Role | Sends | Replies | Reply Rate |
+|------|-------|---------|------------|
+| VP Product | 70 | 6 | 8.6% |
+| Chief Product Officer | 50 | 4 | 8% |
+| Head of Data | 35 | 1 | 2.9% |
+| VP Engineering | 25 | 0 | 0% |
+
+### Context File Updates
+
+**Campaign History**:
+```markdown
+| procurement-q1 | Procurement software | 180 | 6% | #1 Vendor coverage gaps | Product leaders (VP, CPO) 8%+ reply rate. APAC/LATAM angle resonated. Engineering roles didn't engage. |
+```
+
+**Active Hypotheses**:
+```markdown
+### Hypothesis 1: Vendor coverage gaps ✓ VALIDATED
+Performance: 10% reply rate (procurement-q1)
+Refinement: Focus on companies with international customer base. 
+Domestic-only platforms don't feel this pain.
+
+### Hypothesis 2: Vendor onboarding efficiency → NEEDS TESTING
+Performance: 3% reply rate (procurement-q1)
+Note: Only 60 sends, not enough data. Test again with 100+ sends.
+
+### Hypothesis 3: Compliance data gaps ✗ RETIRED
+Performance: 2.5% reply rate, 1 reply across 40 sends
+Why it failed: Compliance is a top-down mandate, not a product pain. 
+Wrong buyer persona.
+```
+
+**ICP Refinement**:
+```markdown
+| Procurement Software Leadership | 100-1000 | US/EU | VP Product, Chief Product Officer | Enterprise SaaS, Procurement |
+```
+
+Remove: Head of Data, VP Engineering (poor reply rates)
+
+**Proof Library**:
+```markdown
+| PS. SAP Ariba integrated our vendor search and saw 40% more APAC matches in Q1. | Procurement software | Vendor coverage gaps | SAP Ariba partnership (won via procurement-q1) |
+```
+
+## Multi-Campaign Analysis
+
+After 3-5 campaigns, patterns emerge across verticals.
+
+### Cross-Vertical Learnings
+
+```markdown
+## Campaign History
+
+| Campaign | Vertical | List Size | Reply Rate | Top Hypothesis | Learnings |
+|----------|----------|-----------|------------|----------------|----------|
+| marketplace-q1 | B2B marketplaces | 250 | 8% | Stale supplier data | CEO/founders 2x VPs |
+| investment-q1 | Investment platforms | 180 | 12% | Deal flow discovery | "Emerging" keyword |
+| procurement-q1 | Procurement software | 180 | 6% | Vendor coverage gaps | Product leaders 8%+, engineering 0% |
+```
+
+**Patterns**:
+1. **Founder/CEO/CPO titles > VP titles** across all campaigns
+2. **Specific keywords** ("emerging", "APAC", "decay") drive engagement
+3. **Engineering roles** don't reply to GTM pitches (even for technical products)
+4. **Larger companies** (500+ employees) have higher reply rates (better data, clearer pain)
+
+**Actions**:
+- Update ICP to prioritize Founder/CEO/CPO
+- Build a "high-signal keywords" library
+- Remove engineering roles from people search
+- Increase list-building employee filters (100+ → 200+)
+
+## Hypothesis Library Evolution
+
+### Hypothesis Lifecycle
+
+```
+Untested → Testing (1 campaign) → Validated (2+ campaigns, 6%+ reply rate)
+                   ↓
+               Retired (0-2% reply rate)
+```
+
+### After 10 Campaigns
+
+You'll have:
+- **5-7 validated hypotheses** (work across verticals)
+- **10-15 vertical-specific hypotheses** (validated per segment)
+- **20+ retired hypotheses** (learned what doesn't work)
+
+This becomes your hypothesis library. New verticals start with validated templates, not blank slates.
+
+## Call Recording Integration
+
+If a reply turns into a call, import the transcript to extract deeper signals.
+
+```
+Update my context file with this call recording.
+Prospect: Jane Doe, VP Product at Acme Procurement
+Context: Reply from procurement-q1 campaign
+[Paste transcript or attach file]
+```
+
+Claude extracts:
+- **ICP signals**: What Jane cares about, her workflow, team structure
+- **Win case data**: If they become a customer, capture their use case
+- **Proof point candidates**: Specific results or quotes
+- **Hypothesis validation**: Which pain points Jane confirmed
+- **Voice feedback**: Reaction to positioning or language
+
+This creates a tight loop: email → reply → call → context update → better emails.
+
+## Automation: Export → Import
+
+For high-volume campaigns, automate the export → import step.
+
+### Instantly Webhook → Claude Code
+
+1. Set up Instantly webhook for campaign completion
+2. Trigger a script that downloads the CSV export
+3. Call Claude Code API with:
+   ```
+   Update context file with campaign results.
+   Campaign: {campaign_name}
+   [Attach CSV]
+   ```
+
+This runs feedback loop mode automatically 2 weeks after each campaign launches.
+
+## Best Practices
+
+<Tip>
+  **Import early and often**: Even partial results (50 sends) give signal. Don't wait for campaign completion.
+</Tip>
+
+<Tip>
+  **Tag replies by sentiment**: Positive, Negative, Neutral. This helps Claude differentiate hypothesis validation from objections.
+</Tip>
+
+<Warning>
+  **Don't over-rotate on small samples**: 1-2 replies for a hypothesis isn't validation. Wait for 5+ replies before promoting to validated.
+</Warning>
+
+<Tip>
+  **Track seasonal patterns**: If a hypothesis works in Q1 but not Q4, note it. Budget cycles affect reply rates.
+</Tip>
+
+<Tip>
+  **Preserve negative learnings**: Retired hypotheses are just as valuable as validated ones. They tell you what NOT to try in the next vertical.
+</Tip>
+
+## Next Steps
+
+- [Your First Campaign](/guides/first-campaign) - Run your first campaign to generate feedback
+- [Managing Multiple Verticals](/guides/multi-vertical) - Apply learnings across segments
+- [Environment Setup](/guides/environment-setup) - Configure API credentials for exports

@@ -1,0 +1,271 @@
+---
+title: "Email Generation"
+description: "Generate cold outreach emails from a contact CSV and self-contained prompt template"
+---
+
+## Overview
+
+Generate cold outreach emails from a contact CSV + prompt template. The prompt template is self-contained — it has all voice, research, value prop, proof points, and personalization rules baked in. This skill just runs it per row.
+
+### When to Use
+
+Trigger this skill when you need to:
+- Generate personalized cold emails at scale
+- Run an email campaign from a contact list
+- Create outreach emails from a prompt template
+- Execute email generation pipeline
+
+**Trigger phrases:** "generate emails", "email generation", "run emails", "create emails", "email pipeline", "generate outreach", "write emails for campaign"
+
+## Architectural Principle
+
+<Info>
+**This skill is a runner, not a reasoner.** All strategic reasoning (voice, value angles, proof points, research data) was done by the `email-prompt-building` skill at prompt-build time and embedded in the prompt template. This skill reads the prompt + CSV and generates emails. It does NOT read the context file, hypothesis set, or research files.
+</Info>
+
+```
+prompt template (.md) ─┐
+                       ├──▶ generate email per row ──▶ emails CSV
+contact CSV ───────────┘
+```
+
+## Inputs Required
+
+<ParamField path="contact_csv" type="string" required>
+  CSV file with recipient data + enrichment columns
+  
+  Location: `claude-code-gtm/csv/input/{campaign}/contacts.csv`
+</ParamField>
+
+<ParamField path="prompt_template" type="string" required>
+  Markdown prompt file from `email-prompt-building` skill
+  
+  Location: `claude-code-gtm/prompts/{vertical-slug}/en_first_email.md`
+</ParamField>
+
+<Note>
+That's it. No context file, no hypothesis set, no research files.
+</Note>
+
+## Contact CSV Columns
+
+The prompt template specifies which columns it needs. Check the prompt's "Enrichment data fields" section for the expected column names.
+
+### Required (Always)
+
+- `first_name`
+- `last_name`
+- `company_name`
+- `job_title`
+
+### Enrichment (Campaign-Specific)
+
+Listed in the prompt template. If the prompt references a field that's not in the CSV, the email quality degrades.
+
+<Warning>
+Check column alignment before running.
+</Warning>
+
+## Running the Generator
+
+<Steps>
+  <Step title="Option A: In-Chat Generation (<30 contacts)">
+    For small lists:
+    
+    1. Read the prompt template
+    2. Read the contact CSV
+    3. For each row, apply the prompt with the row's data and generate the email
+    4. Output as JSON per row, accumulate results
+    5. Save to output CSV
+  </Step>
+  
+  <Step title="Option B: Batch Generation (30+ contacts)">
+    For larger lists, process in batches of 10-20 rows within the conversation:
+    
+    1. Load the prompt template and contact CSV
+    2. Process contacts in batches
+    3. For each row, apply the prompt and generate the email JSON
+    4. Accumulate results and save to output CSV
+    
+    **Output path:** `claude-code-gtm/csv/output/{campaign-slug}/emails.csv`
+  </Step>
+</Steps>
+
+## Quality Checks
+
+After generating, verify:
+
+- [ ] Every email is within the word limit specified in the prompt
+- [ ] No banned phrases from the prompt template appear
+- [ ] Enrichment data was actually used — not just generic text
+- [ ] Example queries in P2 are specific to each recipient's verticals
+- [ ] Proof points vary across emails (not the same PS for everyone)
+- [ ] Subject lines meet the prompt's length constraints
+
+## Segmentation-Aware Generation
+
+When the contact CSV includes segmentation data (from `list-segmentation`):
+
+<Accordion title="Tier 1 Companies">
+  - Generate individually with full attention to enrichment data
+  - Route through `email-response-simulation` for review before sending
+</Accordion>
+
+<Accordion title="Tier 2 Companies">
+  - Group by `hypothesis_number`
+  - Generate in batches within each hypothesis group
+  - Spot-check 2-3 from each group
+</Accordion>
+
+<Accordion title="Tier 3 Companies">
+  - Do not generate emails
+  - Route back to `list-enrichment` or `list-building`
+</Accordion>
+
+## In-Chat Refinement Loop
+
+After generating, you can refine:
+
+<Steps>
+  <Step title="Identify Issues">
+    You identify emails you don't like and say what to change
+  </Step>
+  
+  <Step title="Update the Prompt Template">
+    **Important:** Update the prompt template (not just the individual email) — the fix should be systemic
+  </Step>
+  
+  <Step title="Re-run the Generator">
+    Re-run with updated prompt
+  </Step>
+  
+  <Step title="Iterate">
+    Repeat until satisfied
+  </Step>
+</Steps>
+
+<Note>
+Changes made to the prompt are tracked so you can see the evolution.
+</Note>
+
+## Building a New Prompt Template
+
+<Warning>
+If no prompt template exists for this campaign, use the `email-prompt-building` skill to build one. That skill reads the context file and research, then synthesizes a self-contained prompt. Do not build prompts ad hoc in this skill.
+</Warning>
+
+## Output Format
+
+Generated emails are saved to:
+
+```
+claude-code-gtm/csv/output/{campaign-slug}/emails.csv
+```
+
+**Columns:**
+```csv
+recipient_name,recipient_company,recipient_email,subject,greeting,p1,p2,p3,p4,hypothesis,tier
+```
+
+**JSON format per email:**
+```json
+{
+  "recipient_name": "Jane Doe",
+  "recipient_company": "Acme Corp",
+  "recipient_email": "jane.doe@acme.com",
+  "subject": "Acme's supplier data gap",
+  "greeting": "Hey Jane,",
+  "p1": "First paragraph text...",
+  "p2": "Second paragraph text...",
+  "p3": "Third paragraph text...",
+  "p4": "Fourth paragraph text...",
+  "hypothesis": "Database blind spot",
+  "tier": "1"
+}
+```
+
+## Example Workflow
+
+```bash
+# 1. Load prompt template
+claude-code-gtm/prompts/pe-rollup-blue-collar/en_first_email.md
+
+# 2. Load contact CSV
+claude-code-gtm/csv/input/pe-rollup-blue-collar/contacts.csv
+
+# 3. Generate emails (batch mode for 100+ contacts)
+# Process in batches of 20
+# Apply prompt template to each row
+# Validate against quality checks
+
+# 4. Save output
+claude-code-gtm/csv/output/pe-rollup-blue-collar/emails.csv
+```
+
+## Quality Check Example
+
+<Accordion title="Verify Personalization">
+  **Good:**
+  > Hey Jane, I noticed Acme's platform connects 50K+ HVAC contractors...
+  
+  Uses actual company name and enrichment data (`platform_type`, `contractor_count`).
+  
+  **Bad:**
+  > Hey Jane, I noticed your platform connects contractors...
+  
+  Generic, could apply to anyone.
+</Accordion>
+
+<Accordion title="Verify Example Queries">
+  **Good:**
+  > "HVAC companies in Texas under 50 employees"
+  
+  References prospect's actual vertical (HVAC contractors).
+  
+  **Bad:**
+  > "suppliers in your industry"
+  
+  Generic, not tailored.
+</Accordion>
+
+<Accordion title="Verify Proof Points">
+  **Good:**
+  > FieldNation uses our data to keep 20K+ contractors verified across 40 states.
+  
+  Peer company (similar platform type and size).
+  
+  **Bad:**
+  > A small startup uses our data...
+  
+  Not a peer (smaller company cited to larger prospect).
+</Accordion>
+
+## Troubleshooting
+
+<Warning>
+**Emails too generic?**
+- Check that enrichment columns are populated in the contact CSV
+- Verify the prompt template references enrichment fields by name
+- Re-run `email-prompt-building` with more specific research data
+
+**Banned phrases appearing?**
+- Update the prompt template's "Banned phrasing" section
+- Re-run generation after updating prompt
+
+**Word count violations?**
+- Check the structural variant selection logic in the prompt
+- Verify the prompt specifies word limits per variant
+- Adjust the prompt's P1-P4 length constraints
+
+**Proof points repeating?**
+- Add non-redundancy rules to the prompt template
+- Specify multiple proof points with conditions for when to use each
+</Warning>
+
+## Next Steps
+
+After email generation completes:
+
+1. **Tier 1 emails** → Proceed to `email-response-simulation` for review
+2. **Tier 2 emails** → Spot-check 5-10 and proceed to `campaign-sending`
+3. **All emails** → Review sample and refine prompt if needed
