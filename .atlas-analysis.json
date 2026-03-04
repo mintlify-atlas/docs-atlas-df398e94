@@ -1,0 +1,110 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "GTM Skills",
+  "projectDescription": "Reusable prompt templates for Claude Code covering outbound campaigns: research, list building, enrichment, segmentation, email generation, and sending.",
+  "theme": "mint",
+  "primaryColor": "#141414",
+  "lightColor": "#da7656",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/overview",
+              "concepts/workflow",
+              "concepts/context-files",
+              "concepts/campaign-artifacts"
+            ]
+          },
+          {
+            "group": "Skills Reference",
+            "pages": [
+              "skills/overview",
+              "skills/context-building",
+              "skills/hypothesis-building",
+              "skills/list-building",
+              "skills/market-research",
+              "skills/enrichment-design",
+              "skills/list-enrichment",
+              "skills/table-creation",
+              "skills/list-segmentation",
+              "skills/people-search",
+              "skills/email-search",
+              "skills/email-prompt-building",
+              "skills/email-generation",
+              "skills/email-response-simulation",
+              "skills/campaign-sending"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/first-campaign",
+              "guides/multi-vertical",
+              "guides/feedback-loops",
+              "guides/environment-setup"
+            ]
+          },
+          {
+            "group": "API Integration",
+            "pages": [
+              "api/extruct",
+              "api/email-providers",
+              "api/contact-enrichment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Use Cases",
+            "pages": [
+              "examples/seed-company",
+              "examples/new-vertical",
+              "examples/win-case-analysis",
+              "examples/call-recording-capture"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "15 modular skills for complete outbound workflow",
+    "Context-aware email generation with tier-based personalization",
+    "Extruct API integration for company discovery and enrichment",
+    "Hypothesis-driven campaign design and testing",
+    "Automated list building, segmentation, and qualification",
+    "Multi-vertical campaign management with feedback loops"
+  ],
+  "publicApiSurface": [
+    "context-building",
+    "hypothesis-building",
+    "list-building",
+    "market-research",
+    "enrichment-design",
+    "list-enrichment",
+    "table-creation",
+    "list-segmentation",
+    "people-search",
+    "email-search",
+    "email-prompt-building",
+    "email-generation",
+    "email-response-simulation",
+    "campaign-sending"
+  ]
+}
